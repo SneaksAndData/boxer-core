@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use crate::services::base::types::SchemaRepository;
 
 pub mod kubernetes;
+pub mod memory;
 
 #[allow(dead_code)]
 pub trait Backend: SchemaRepositorySource + Send + Sync {
