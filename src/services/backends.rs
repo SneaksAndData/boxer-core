@@ -19,6 +19,8 @@ pub trait SchemaRepositorySource: Send + Sync {
 #[allow(dead_code)]
 pub trait BackendConfiguration: Send + Sync + Sized {
     type BackendSettings;
+    
+    type InitializedBackend: Backend;
 
-    async fn configure(mut self, cm: &Self::BackendSettings, instance_name: String) -> anyhow::Result<Arc<dyn Backend>>;
+    async fn configure(mut self, cm: &Self::BackendSettings, instance_name: String) -> anyhow::Result<Arc<Self::InitializedBackend>>;
 }
