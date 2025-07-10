@@ -6,7 +6,7 @@ pub mod kubernetes;
 
 #[allow(dead_code)]
 pub trait Backend: SchemaRepositorySource + Send + Sync {
-    
+
 }
 
 pub trait SchemaRepositorySource: Send + Sync {
@@ -18,6 +18,6 @@ pub trait SchemaRepositorySource: Send + Sync {
 #[allow(dead_code)]
 pub trait BackendConfiguration: Send + Sync + Sized {
     type BackendSettings;
-    
+
     async fn configure(mut self, cm: &Self::BackendSettings, instance_name: String) -> anyhow::Result<Arc<dyn Backend>>;
 }
