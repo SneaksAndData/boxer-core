@@ -1,5 +1,5 @@
-use kube::config::Kubeconfig;
 use kube::Config;
+use kube::config::Kubeconfig;
 use log::info;
 use std::process::Command;
 

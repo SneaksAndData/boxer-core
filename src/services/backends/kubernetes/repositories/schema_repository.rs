@@ -18,6 +18,9 @@ use std::{println as warn, println as debug};
 
 // Other imports
 use super::super::kubernetes_resource_manager::synchronized::SynchronizedKubernetesResourceManager;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::{
+    KubernetesResourceManagerConfig, ResourceUpdateHandler,
+};
 use crate::services::base::upsert_repository::UpsertRepository;
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -26,14 +29,13 @@ use futures::future;
 use futures::future::Ready;
 use k8s_openapi::api::core::v1::ConfigMap;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+use k8s_openapi::serde_json;
+use kube::Resource;
 use kube::runtime::reflector::ObjectRef;
 use kube::runtime::watcher;
-use kube::Resource;
 use maplit::btreemap;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use k8s_openapi::serde_json;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::{KubernetesResourceManagerConfig, ResourceUpdateHandler};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct SchemaData {
@@ -81,7 +83,8 @@ impl KubernetesSchemaRepository {
     pub async fn start(config: KubernetesResourceManagerConfig) -> anyhow::Result<Self> {
         let label_selector_key = config.label_selector_key.clone();
         let label_selector_value = config.label_selector_value.clone();
-        let resource_manger = SynchronizedKubernetesResourceManager::start(config, Arc::new(UpdateHandler)).await?;
+        let resource_manger =
+            SynchronizedKubernetesResourceManager::start(config, Arc::new(UpdateHandler)).await?;
         Ok(KubernetesSchemaRepository {
             resource_manger,
             label_selector_key,
@@ -158,7 +161,9 @@ impl UpsertRepository<String, SchemaFragment> for KubernetesSchemaRepository {
         }
         let resource_object = Arc::make_mut(&mut resource_ref);
         resource_object.data.active = "false".to_string();
-        self.resource_manger.replace(&key, resource_object.clone()).await
+        self.resource_manger
+            .replace(&key, resource_object.clone())
+            .await
     }
 
     async fn exists(&self, key: String) -> Result<bool, Self::Error> {

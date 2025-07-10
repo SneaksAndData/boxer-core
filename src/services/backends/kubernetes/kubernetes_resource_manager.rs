@@ -1,17 +1,17 @@
 pub mod synchronized;
 
-use anyhow::{anyhow, Error};
-use futures::future::Ready;
+use anyhow::{Error, anyhow};
 use futures::StreamExt;
+use futures::future::Ready;
 use k8s_openapi::NamespaceResourceScope;
 use kube::api::PostParams;
 use kube::runtime::reflector::{ObjectRef, Store};
 use kube::runtime::watcher::Config;
-use kube::runtime::{reflector, watcher, WatchStreamExt};
+use kube::runtime::{WatchStreamExt, reflector, watcher};
 use kube::{Api, Client, Resource};
 use log::debug;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -33,7 +33,11 @@ pub struct KubernetesResourceManagerConfig {
 
 impl KubernetesResourceManagerConfig {
     #[allow(dead_code)]
-    pub fn clone_with_label_selector(&self, label_selector_key: String, label_selector_value: String) -> Self {
+    pub fn clone_with_label_selector(
+        &self,
+        label_selector_key: String,
+        label_selector_value: String,
+    ) -> Self {
         KubernetesResourceManagerConfig {
             namespace: self.namespace.clone(),
             label_selector_key,
@@ -66,10 +70,21 @@ where
 
 impl<S> KubernetesResourceManager<S>
 where
-    S: Resource<Scope = NamespaceResourceScope> + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
+    S: Resource<Scope = NamespaceResourceScope>
+        + Clone
+        + Debug
+        + Serialize
+        + DeserializeOwned
+        + Send
+        + Sync,
     S::DynamicType: Hash + Eq + Clone + Default,
 {
-    pub fn new(reader: Store<S>, handle: tokio::task::JoinHandle<()>, api: Api<S>, namespace: String) -> Self {
+    pub fn new(
+        reader: Store<S>,
+        handle: tokio::task::JoinHandle<()>,
+        api: Api<S>,
+        namespace: String,
+    ) -> Self {
         KubernetesResourceManager {
             reader,
             handle,
@@ -137,7 +152,10 @@ where
         let client = Client::try_from(config.kubeconfig)?;
         let api: Api<S> = Api::namespaced(client.clone(), config.namespace.as_str());
         let watcher_config = Config {
-            label_selector: Some(format!("{}={}", config.label_selector_key, config.label_selector_value)),
+            label_selector: Some(format!(
+                "{}={}",
+                config.label_selector_key, config.label_selector_value
+            )),
             ..Default::default()
         };
         let stream = watcher(api.clone(), watcher_config);
@@ -151,6 +169,11 @@ where
         let handle = tokio::spawn(reflector);
         reader.wait_until_ready().await?;
 
-        Ok(KubernetesResourceManager::new(reader, handle, api, config.namespace))
+        Ok(KubernetesResourceManager::new(
+            reader,
+            handle,
+            api,
+            config.namespace,
+        ))
     }
 }
