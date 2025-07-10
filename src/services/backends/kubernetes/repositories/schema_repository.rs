@@ -83,8 +83,7 @@ impl KubernetesSchemaRepository {
     pub async fn start(config: KubernetesResourceManagerConfig) -> anyhow::Result<Self> {
         let label_selector_key = config.label_selector_key.clone();
         let label_selector_value = config.label_selector_value.clone();
-        let resource_manger =
-            SynchronizedKubernetesResourceManager::start(config, Arc::new(UpdateHandler)).await?;
+        let resource_manger = SynchronizedKubernetesResourceManager::start(config, Arc::new(UpdateHandler)).await?;
         Ok(KubernetesSchemaRepository {
             resource_manger,
             label_selector_key,
@@ -161,9 +160,7 @@ impl UpsertRepository<String, SchemaFragment> for KubernetesSchemaRepository {
         }
         let resource_object = Arc::make_mut(&mut resource_ref);
         resource_object.data.active = "false".to_string();
-        self.resource_manger
-            .replace(&key, resource_object.clone())
-            .await
+        self.resource_manger.replace(&key, resource_object.clone()).await
     }
 
     async fn exists(&self, key: String) -> Result<bool, Self::Error> {

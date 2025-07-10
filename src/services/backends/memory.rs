@@ -1,10 +1,10 @@
+use crate::services::base::upsert_repository::UpsertRepository;
 use anyhow::bail;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use tokio::sync::RwLock;
-use crate::services::base::upsert_repository::UpsertRepository;
 
 #[async_trait]
 impl<Entity, Key> UpsertRepository<Key, Entity> for RwLock<HashMap<Key, Entity>>
