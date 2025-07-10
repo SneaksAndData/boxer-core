@@ -1,1 +1,1 @@
-mod schema_repository;
+pub mod schema_repository;

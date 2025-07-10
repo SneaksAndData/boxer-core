@@ -35,13 +35,8 @@ where
 
 impl<Resource> SynchronizedKubernetesResourceManager<Resource>
 where
-    Resource: kube::Resource<Scope = NamespaceResourceScope>
-        + Clone
-        + Debug
-        + Serialize
-        + DeserializeOwned
-        + Send
-        + Sync,
+    Resource:
+        kube::Resource<Scope = NamespaceResourceScope> + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
     Resource::DynamicType: Hash + Eq + Clone + Default,
 {
     pub fn new(
@@ -57,15 +52,13 @@ where
     }
 
     pub async fn replace(&self, name: &str, object: Resource) -> Result<(), Error> {
-        let lm =
-            LeaseManager::init(self.api.clone(), self.lease_settings.lease_name.clone()).await?;
+        let lm = LeaseManager::init(self.api.clone(), self.lease_settings.lease_name.clone()).await?;
 
         let claims_params = ClaimParams {
             lease_duration: self.lease_settings.lease_duration,
             renew_grace_period: self.lease_settings.renew_deadline,
         };
-        lm.ensure_claimed(&self.lease_settings.claimant, &claims_params)
-            .await?;
+        lm.ensure_claimed(&self.lease_settings.claimant, &claims_params).await?;
         self.resource_manager.replace(name, object).await?;
         lm.vacate("boxer").await?;
         Ok(())
@@ -79,8 +72,7 @@ where
         config: KubernetesResourceManagerConfig,
         update_handler: Arc<dyn ResourceUpdateHandler<Resource>>,
     ) -> Result<Self, Error> {
-        let resource_manager =
-            KubernetesResourceManager::start(config.clone(), update_handler).await?;
+        let resource_manager = KubernetesResourceManager::start(config.clone(), update_handler).await?;
         let client = Client::try_from(config.kubeconfig)?;
         let api = Api::<Lease>::namespaced(client, &config.namespace);
         let lease = Lease {
@@ -105,11 +97,7 @@ where
             renew_deadline: config.renew_deadline,
             lease_name: config.lease_name.clone(),
         };
-        Ok(SynchronizedKubernetesResourceManager::new(
-            resource_manager,
-            api,
-            ls,
-        ))
+        Ok(SynchronizedKubernetesResourceManager::new(resource_manager, api, ls))
     }
 
     pub fn stop(&self) -> anyhow::Result<()> {
