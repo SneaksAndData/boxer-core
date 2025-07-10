@@ -1,0 +1,9 @@
+[package]
+name = "boxer_core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.86"
+async-trait = "0.1.88"
+cedar-policy = "4.4.0"
