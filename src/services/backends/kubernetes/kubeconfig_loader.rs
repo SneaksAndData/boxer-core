@@ -15,7 +15,7 @@ pub fn from_file() -> Box<dyn KubeConfigLoader<ConfigSource=String>> {
 }
 
 #[async_trait]
-pub trait KubeConfigLoader {
+pub trait KubeConfigLoader: Send + Sync {
     type ConfigSource;
     async fn load(&self, source: &Self::ConfigSource) -> anyhow::Result<Config>;
 }
