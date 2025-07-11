@@ -3,3 +3,4 @@ pub mod repositories;
 
 #[cfg(test)]
 mod tests;
+mod kubeconfig_loader;
