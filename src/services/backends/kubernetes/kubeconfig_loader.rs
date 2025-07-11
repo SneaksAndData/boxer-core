@@ -1,4 +1,5 @@
 use std::process::Command;
+use std::sync::Arc;
 use anyhow::bail;
 use async_trait::async_trait;
 use kube::Config;
@@ -6,16 +7,16 @@ use kube::config::Kubeconfig;
 use log::{debug, info};
 use serde_yml::from_str;
 
-pub fn from_command() -> Box<dyn KubeConfigLoader<ConfigSource=String>> {
-    Box::new(ExecutableKubeConfigLoader)
+pub fn from_command() -> Arc<dyn KubeConfigLoader<ConfigSource=String>> {
+    Arc::new(ExecutableKubeConfigLoader)
 }
 
-pub fn from_file() -> Box<dyn KubeConfigLoader<ConfigSource=String>> {
-    Box::new(FileKubeConfigLoader)
+pub fn from_file() -> Arc<dyn KubeConfigLoader<ConfigSource=String>> {
+    Arc::new(FileKubeConfigLoader)
 }
 
 #[async_trait]
-pub trait KubeConfigLoader: Send + Sync {
+pub trait KubeConfigLoader {
     type ConfigSource;
     async fn load(&self, source: &Self::ConfigSource) -> anyhow::Result<Config>;
 }
