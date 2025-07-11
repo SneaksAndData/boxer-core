@@ -4,6 +4,24 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+
+# Kubernetes dependencies
+kube = { version = "0.99.0", features = ["config", "client", "runtime", "derive"] }
+k8s-openapi = { version = "0.24.0", features = ["latest"] }
+kubert = { version = "0.24.0",features = ["lease"] }
+
+# Other dependencies
 anyhow = "1.0.86"
 async-trait = "0.1.88"
 cedar-policy = "4.4.0"
+futures = "0.3.31"
+log = { version=  "0.4.22", features = ["kv"] }
+serde = { version = "1.0.219", features = ["derive"] }
+maplit = "1.0.2"
+serde_json = "1.0.140"
+uuid = {  version = "1.17.0", features = ["v4"] }
+tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+test-context = "0.4.1"
+serde_yml = "0.0.12"
