@@ -1,17 +1,17 @@
-use std::process::Command;
-use std::sync::Arc;
 use anyhow::bail;
 use async_trait::async_trait;
 use kube::Config;
 use kube::config::Kubeconfig;
 use log::{debug, info};
 use serde_yml::from_str;
+use std::process::Command;
+use std::sync::Arc;
 
-pub fn from_command() -> Arc<dyn KubeConfigLoader<ConfigSource=String>> {
+pub fn from_command() -> Arc<dyn KubeConfigLoader<ConfigSource = String>> {
     Arc::new(ExecutableKubeConfigLoader)
 }
 
-pub fn from_file() -> Arc<dyn KubeConfigLoader<ConfigSource=String>> {
+pub fn from_file() -> Arc<dyn KubeConfigLoader<ConfigSource = String>> {
     Arc::new(FileKubeConfigLoader)
 }
 
