@@ -21,7 +21,9 @@ use super::super::kubernetes_resource_manager::synchronized::SynchronizedKuberne
 use crate::services::backends::kubernetes::kubernetes_resource_manager::{
     KubernetesResourceManagerConfig, ResourceUpdateHandler,
 };
-use crate::services::base::upsert_repository::UpsertRepository;
+use crate::services::base::upsert_repository::{
+    CanDelete, ReadOnlyRepository, UpsertRepository, UpsertRepositoryWithDelete,
+};
 use anyhow::anyhow;
 use async_trait::async_trait;
 use cedar_policy::SchemaFragment;
@@ -121,10 +123,10 @@ impl ResourceUpdateHandler<SchemaConfigMap> for UpdateHandler {
 }
 
 #[async_trait]
-impl UpsertRepository<String, SchemaFragment> for KubernetesSchemaRepository {
-    type Error = anyhow::Error;
+impl ReadOnlyRepository<String, SchemaFragment> for KubernetesSchemaRepository {
+    type ReadError = anyhow::Error;
 
-    async fn get(&self, key: String) -> Result<SchemaFragment, Self::Error> {
+    async fn get(&self, key: String) -> Result<SchemaFragment, Self::ReadError> {
         let or = ObjectRef::new(key.as_str()).within(self.resource_manger.namespace().as_str());
         let resource_object = self.resource_manger.get(or).map_err(|e| anyhow!(e))?;
         if resource_object.data.active.contains("false") {
@@ -133,6 +135,11 @@ impl UpsertRepository<String, SchemaFragment> for KubernetesSchemaRepository {
         let result: SchemaFragment = resource_object.data.clone().try_into()?;
         Ok(result)
     }
+}
+
+#[async_trait]
+impl UpsertRepository<String, SchemaFragment> for KubernetesSchemaRepository {
+    type Error = anyhow::Error;
 
     async fn upsert(&self, key: String, entity: SchemaFragment) -> Result<(), Self::Error> {
         let updated_configmap = SchemaConfigMap {
@@ -152,17 +159,6 @@ impl UpsertRepository<String, SchemaFragment> for KubernetesSchemaRepository {
             .map_err(|e| anyhow!("Failed to update ConfigMap: {}", e))
     }
 
-    async fn delete(&self, key: String) -> Result<(), Self::Error> {
-        let or = ObjectRef::new(key.as_str()).within(self.resource_manger.namespace().as_str());
-        let mut resource_ref = self.resource_manger.get(or).map_err(|e| anyhow!(e))?;
-        if resource_ref.data.active.contains("false") {
-            return Ok(());
-        }
-        let resource_object = Arc::make_mut(&mut resource_ref);
-        resource_object.data.active = "false".to_string();
-        self.resource_manger.replace(&key, resource_object.clone()).await
-    }
-
     async fn exists(&self, key: String) -> Result<bool, Self::Error> {
         let or: ObjectRef<SchemaConfigMap> =
             ObjectRef::new(key.as_str()).within(self.resource_manger.namespace().as_str());
@@ -175,3 +171,21 @@ impl UpsertRepository<String, SchemaFragment> for KubernetesSchemaRepository {
         })
     }
 }
+
+#[async_trait]
+impl CanDelete<String, SchemaFragment> for KubernetesSchemaRepository {
+    type DeleteError = anyhow::Error;
+
+    async fn delete(&self, key: String) -> Result<(), Self::DeleteError> {
+        let or = ObjectRef::new(key.as_str()).within(self.resource_manger.namespace().as_str());
+        let mut resource_ref = self.resource_manger.get(or).map_err(|e| anyhow!(e))?;
+        if resource_ref.data.active.contains("false") {
+            return Ok(());
+        }
+        let resource_object = Arc::make_mut(&mut resource_ref);
+        resource_object.data.active = "false".to_string();
+        self.resource_manger.replace(&key, resource_object.clone()).await
+    }
+}
+
+impl UpsertRepositoryWithDelete<String, SchemaFragment> for KubernetesSchemaRepository {}
