@@ -30,7 +30,6 @@ pub trait CanDelete<Key, Entity>: Send + Sync {
     async fn delete(&self, key: Key) -> Result<(), Self::DeleteError>;
 }
 
-
 pub trait UpsertRepositoryWithDelete<Key, Entity>: UpsertRepository<Key, Entity> + CanDelete<Key, Entity> {
     // This trait is a marker trait that combines UpsertRepository and CanDelete
 }

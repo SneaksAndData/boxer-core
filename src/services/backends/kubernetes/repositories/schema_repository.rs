@@ -21,7 +21,9 @@ use super::super::kubernetes_resource_manager::synchronized::SynchronizedKuberne
 use crate::services::backends::kubernetes::kubernetes_resource_manager::{
     KubernetesResourceManagerConfig, ResourceUpdateHandler,
 };
-use crate::services::base::upsert_repository::{CanDelete, ReadOnlyRepository, UpsertRepository, UpsertRepositoryWithDelete};
+use crate::services::base::upsert_repository::{
+    CanDelete, ReadOnlyRepository, UpsertRepository, UpsertRepositoryWithDelete,
+};
 use anyhow::anyhow;
 use async_trait::async_trait;
 use cedar_policy::SchemaFragment;
