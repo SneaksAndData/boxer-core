@@ -130,7 +130,7 @@ where
 {
     async fn start(
         config: KubernetesResourceManagerConfig,
-        update_handler: Arc<Mutex<>H>,
+        update_handler: Arc<H>,
     ) -> anyhow::Result<Self> {
         let client = Client::try_from(config.kubeconfig)?;
         let api: Api<S> = Api::namespaced(client.clone(), config.namespace.as_str());
