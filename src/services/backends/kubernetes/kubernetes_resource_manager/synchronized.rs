@@ -15,6 +15,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
 use std::time::Duration;
+use crate::services::backends::kubernetes::kubernetes_resource_watcher::KubernetesResourceWatcher;
 
 pub struct LeaseSettings {
     pub claimant: String,

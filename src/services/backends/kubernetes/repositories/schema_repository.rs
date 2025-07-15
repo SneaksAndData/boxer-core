@@ -19,7 +19,7 @@ use std::{println as warn, println as debug};
 // Other imports
 use super::super::kubernetes_resource_manager::synchronized::SynchronizedKubernetesResourceManager;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::{
-    KubernetesResourceManagerConfig, ResourceUpdateHandler,
+    KubernetesResourceManagerConfig
 };
 use crate::services::base::upsert_repository::{
     CanDelete, ReadOnlyRepository, UpsertRepository, UpsertRepositoryWithDelete,
@@ -38,6 +38,7 @@ use kube::runtime::watcher;
 use maplit::btreemap;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use crate::services::backends::kubernetes::kubernetes_resource_watcher::ResourceUpdateHandler;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct SchemaData {
