@@ -1,8 +1,11 @@
 pub mod synchronized;
 
+use crate::services::backends::kubernetes::kubernetes_resource_watcher::{
+    KubernetesResourceWatcher, ResourceUpdateHandler,
+};
 use anyhow::{Error, anyhow};
+use async_trait::async_trait;
 use futures::StreamExt;
-use futures::future::Ready;
 use k8s_openapi::NamespaceResourceScope;
 use kube::api::PostParams;
 use kube::runtime::reflector::{ObjectRef, Store};
@@ -14,10 +17,8 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
-use async_trait::async_trait;
-use crate::services::backends::kubernetes::kubernetes_resource_watcher::{KubernetesResourceWatcher, ResourceUpdateHandler};
 
 /// Configuration for the Kubernetes repository.
 #[derive(Clone)]
@@ -122,16 +123,15 @@ where
 }
 
 #[async_trait]
-impl<S, H> KubernetesResourceWatcher<S, H> for KubernetesResourceManager<S>
+impl<S> KubernetesResourceWatcher<S> for KubernetesResourceManager<S>
 where
     S: Resource<Scope = NamespaceResourceScope> + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
     S::DynamicType: Hash + Eq + Clone + Default,
-    H: ResourceUpdateHandler<S> + Send + Sync + 'static,
 {
-    async fn start(
-        config: KubernetesResourceManagerConfig,
-        update_handler: Arc<H>,
-    ) -> anyhow::Result<Self> {
+    async fn start<H>(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<Self>
+    where
+        H: ResourceUpdateHandler<S> + Send + Sync + 'static,
+    {
         let client = Client::try_from(config.kubeconfig)?;
         let api: Api<S> = Api::namespaced(client.clone(), config.namespace.as_str());
         let watcher_config = Config {
@@ -141,11 +141,15 @@ where
         let stream = watcher(api.clone(), watcher_config);
         let (reader, writer) = reflector::store();
 
-        let uh = update_handler.clone();
         let reflector = reflector(writer, stream)
             .default_backoff()
             .touched_objects()
-            .for_each(move |r| uh.handle_update(r));
+            .for_each(move |r| {
+                let update_handler = update_handler.clone();
+                async move {
+                    update_handler.handle_update(r).await;
+                }
+            });
 
         let handle = tokio::spawn(reflector);
         reader.wait_until_ready().await?;

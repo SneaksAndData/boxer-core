@@ -1,18 +1,15 @@
 use super::*;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_reduced_schema::reduced_schema;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_schema::schema;
+use crate::testing::{create_namespace, get_kubeconfig};
 use crate::services::base::upsert_repository::UpsertRepository;
 use cedar_policy::Schema;
-use k8s_openapi::api::core::v1::{ConfigMap, Namespace};
-use kube::api::PostParams;
+use k8s_openapi::api::core::v1::ConfigMap;
 use kube::{Api, Client};
-use serde_json::json;
-use std::println as info;
 use std::sync::Arc;
 use std::time::Duration;
-use test_context::{AsyncTestContext, test_context};
+use test_context::{test_context, AsyncTestContext};
 use tokio::time::sleep;
-use uuid::Uuid;
 
 #[allow(dead_code)]
 const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(10);
@@ -29,23 +26,10 @@ const LABEL_SELECTOR_VALUE: &str = "schema";
 
 impl AsyncTestContext for KubernetesSchemaRepositoryTest {
     async fn setup() -> KubernetesSchemaRepositoryTest {
-        let config = super::super::super::tests::fixtures::get_kubeconfig()
-            .await
-            .expect("Failed to get kubeconfig");
-
-        let client = Client::try_from(config.clone()).expect("Failed to create Kubernetes client");
-        let namespace = Uuid::new_v4().to_string();
-        info!("Using namespace: {}", namespace);
-
-        let namespaces: Api<Namespace> = Api::all(client.clone());
-        let namespace_json = json!({ "metadata": { "name": namespace.clone() } });
-        let ns = serde_json::from_value(namespace_json).expect("Failed to deserialize namespace");
-
-        namespaces
-            .create(&PostParams::default(), &ns)
-            .await
-            .expect("Create Namespace failed");
-
+        let namespace = create_namespace().await.expect("Failed to create namespace");
+        let config = get_kubeconfig().await.expect("Failed to create config");
+        let client = Client::try_from(config.clone()).expect("Failed to create client");
+        
         let raw_api: Api<ConfigMap> = Api::namespaced(client.clone(), namespace.as_str());
         let data_api: Api<SchemaConfigMap> = Api::namespaced(client.clone(), namespace.as_str());
 
