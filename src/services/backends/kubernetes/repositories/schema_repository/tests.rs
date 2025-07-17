@@ -1,14 +1,14 @@
 use super::*;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_reduced_schema::reduced_schema;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_schema::schema;
-use crate::testing::{create_namespace, get_kubeconfig};
 use crate::services::base::upsert_repository::UpsertRepository;
+use crate::testing::{create_namespace, get_kubeconfig};
 use cedar_policy::Schema;
 use k8s_openapi::api::core::v1::ConfigMap;
 use kube::{Api, Client};
 use std::sync::Arc;
 use std::time::Duration;
-use test_context::{test_context, AsyncTestContext};
+use test_context::{AsyncTestContext, test_context};
 use tokio::time::sleep;
 
 #[allow(dead_code)]
@@ -29,7 +29,7 @@ impl AsyncTestContext for KubernetesSchemaRepositoryTest {
         let namespace = create_namespace().await.expect("Failed to create namespace");
         let config = get_kubeconfig().await.expect("Failed to create config");
         let client = Client::try_from(config.clone()).expect("Failed to create client");
-        
+
         let raw_api: Api<ConfigMap> = Api::namespaced(client.clone(), namespace.as_str());
         let data_api: Api<SchemaConfigMap> = Api::namespaced(client.clone(), namespace.as_str());
 
