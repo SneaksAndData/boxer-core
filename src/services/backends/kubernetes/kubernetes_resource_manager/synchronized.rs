@@ -1,4 +1,5 @@
 use super::{KubernetesResourceManager, KubernetesResourceManagerConfig, ResourceUpdateHandler};
+use crate::services::backends::kubernetes::kubernetes_resource_watcher::KubernetesResourceWatcher;
 use anyhow::Error;
 use k8s_openapi::NamespaceResourceScope;
 use k8s_openapi::api::coordination::v1::Lease;
@@ -68,10 +69,10 @@ where
         self.resource_manager.get(object_ref)
     }
 
-    pub async fn start(
-        config: KubernetesResourceManagerConfig,
-        update_handler: Arc<dyn ResourceUpdateHandler<Resource>>,
-    ) -> Result<Self, Error> {
+    pub async fn start<H>(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> Result<Self, Error>
+    where
+        H: ResourceUpdateHandler<Resource> + Send + Sync + 'static,
+    {
         let resource_manager = KubernetesResourceManager::start(config.clone(), update_handler).await?;
         let client = Client::try_from(config.kubeconfig)?;
         let api = Api::<Lease>::namespaced(client, &config.namespace);

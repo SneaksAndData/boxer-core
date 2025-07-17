@@ -1,8 +1,11 @@
 pub mod synchronized;
 
+use crate::services::backends::kubernetes::kubernetes_resource_watcher::{
+    KubernetesResourceWatcher, ResourceUpdateHandler,
+};
 use anyhow::{Error, anyhow};
+use async_trait::async_trait;
 use futures::StreamExt;
-use futures::future::Ready;
 use k8s_openapi::NamespaceResourceScope;
 use kube::api::PostParams;
 use kube::runtime::reflector::{ObjectRef, Store};
@@ -46,6 +49,7 @@ impl KubernetesResourceManagerConfig {
         }
     }
 }
+
 pub struct KubernetesResourceManager<StoredObject>
 where
     StoredObject: Resource + 'static,
@@ -55,13 +59,6 @@ where
     handle: tokio::task::JoinHandle<()>,
     api: Api<StoredObject>,
     namespace: String,
-}
-
-pub trait ResourceUpdateHandler<S>: Send + Sync
-where
-    S: Resource + Send + Sync,
-{
-    fn handle_update(&self, result: Result<S, watcher::Error>) -> Ready<()>;
 }
 
 impl<S> KubernetesResourceManager<S>
@@ -123,17 +120,18 @@ where
             )
         })
     }
+}
 
-    pub fn stop(&self) -> anyhow::Result<()> {
-        self.handle.abort();
-        debug!("KubernetesResourceManager stopped");
-        Ok(())
-    }
-
-    pub async fn start(
-        config: KubernetesResourceManagerConfig,
-        update_handler: Arc<dyn ResourceUpdateHandler<S>>,
-    ) -> anyhow::Result<Self> {
+#[async_trait]
+impl<S> KubernetesResourceWatcher<S> for KubernetesResourceManager<S>
+where
+    S: Resource<Scope = NamespaceResourceScope> + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
+    S::DynamicType: Hash + Eq + Clone + Default,
+{
+    async fn start<H>(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<Self>
+    where
+        H: ResourceUpdateHandler<S> + Send + Sync + 'static,
+    {
         let client = Client::try_from(config.kubeconfig)?;
         let api: Api<S> = Api::namespaced(client.clone(), config.namespace.as_str());
         let watcher_config = Config {
@@ -146,11 +144,22 @@ where
         let reflector = reflector(writer, stream)
             .default_backoff()
             .touched_objects()
-            .for_each(move |r| update_handler.handle_update(r));
+            .for_each(move |r| {
+                let update_handler = update_handler.clone();
+                async move {
+                    update_handler.handle_update(r).await;
+                }
+            });
 
         let handle = tokio::spawn(reflector);
         reader.wait_until_ready().await?;
 
         Ok(KubernetesResourceManager::new(reader, handle, api, config.namespace))
+    }
+
+    fn stop(&self) -> anyhow::Result<()> {
+        self.handle.abort();
+        debug!("KubernetesResourceManager stopped");
+        Ok(())
     }
 }

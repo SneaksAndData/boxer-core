@@ -18,9 +18,8 @@ use std::{println as warn, println as debug};
 
 // Other imports
 use super::super::kubernetes_resource_manager::synchronized::SynchronizedKubernetesResourceManager;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::{
-    KubernetesResourceManagerConfig, ResourceUpdateHandler,
-};
+use crate::services::backends::kubernetes::kubernetes_resource_manager::KubernetesResourceManagerConfig;
+use crate::services::backends::kubernetes::kubernetes_resource_watcher::ResourceUpdateHandler;
 use crate::services::base::upsert_repository::{
     CanDelete, ReadOnlyRepository, UpsertRepository, UpsertRepositoryWithDelete,
 };
@@ -28,7 +27,6 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use cedar_policy::SchemaFragment;
 use futures::future;
-use futures::future::Ready;
 use k8s_openapi::api::core::v1::ConfigMap;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use k8s_openapi::serde_json;
@@ -104,7 +102,7 @@ impl Drop for KubernetesSchemaRepository {
 
 struct UpdateHandler;
 impl ResourceUpdateHandler<SchemaConfigMap> for UpdateHandler {
-    fn handle_update(&self, event: Result<SchemaConfigMap, watcher::Error>) -> Ready<()> {
+    fn handle_update(&self, event: Result<SchemaConfigMap, watcher::Error>) -> impl Future<Output = ()> + Send {
         match event {
             Ok(SchemaConfigMap {
                 metadata:
