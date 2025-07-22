@@ -15,10 +15,18 @@ pub fn from_file() -> Arc<dyn KubeConfigLoader<ConfigSource = String>> {
     Arc::new(FileKubeConfigLoader)
 }
 
+pub fn from_cluster() -> Arc<dyn ParameterLessConfigLoader> {
+    Arc::new(InClusterKubeConfigLoader)
+}
+
 #[async_trait]
 pub trait KubeConfigLoader: Send + Sync {
     type ConfigSource;
     async fn load(&self, source: &Self::ConfigSource) -> anyhow::Result<Config>;
+}
+
+pub trait ParameterLessConfigLoader{
+    fn load(&self) -> anyhow::Result<Config>;
 }
 
 struct ExecutableKubeConfigLoader;
@@ -55,5 +63,15 @@ impl KubeConfigLoader for FileKubeConfigLoader {
         debug!("Kubeconfig used by the backend:\n{:?}", kubeconfig_string);
         let kubeconfig: Kubeconfig = from_str(&kubeconfig_string)?;
         Ok(Config::from_custom_kubeconfig(kubeconfig, &Default::default()).await?)
+    }
+}
+
+struct InClusterKubeConfigLoader;
+
+impl ParameterLessConfigLoader for InClusterKubeConfigLoader {
+    fn load(&self) -> anyhow::Result<Config> {
+        info!("Loading in-cluster Kubernetes configuration");
+        let config = Config::incluster()?;
+        Ok(config)
     }
 }
