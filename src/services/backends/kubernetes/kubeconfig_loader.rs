@@ -25,7 +25,7 @@ pub trait KubeConfigLoader: Send + Sync {
     async fn load(&self, source: &Self::ConfigSource) -> anyhow::Result<Config>;
 }
 
-pub trait ParameterLessConfigLoader{
+pub trait ParameterLessConfigLoader {
     fn load(&self) -> anyhow::Result<Config>;
 }
 
