@@ -1,4 +1,6 @@
-use crate::services::base::upsert_repository::{CanDelete, ReadOnlyRepository, UpsertRepository};
+use crate::services::base::upsert_repository::{
+    CanDelete, ReadOnlyRepository, UpsertRepository, UpsertRepositoryWithDelete,
+};
 use anyhow::bail;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -56,4 +58,11 @@ where
         (*write_guard).remove(&key);
         Ok(())
     }
+}
+
+impl<Entity, Key> UpsertRepositoryWithDelete<Key, Entity> for RwLock<HashMap<Key, Entity>>
+where
+    Entity: Send + Sync + Clone,
+    Key: Send + Sync + Eq + Hash + Debug,
+{
 }
