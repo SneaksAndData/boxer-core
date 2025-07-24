@@ -27,53 +27,54 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use cedar_policy::SchemaFragment;
 use futures::future;
-use k8s_openapi::api::core::v1::ConfigMap;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use k8s_openapi::serde_json;
-use kube::Resource;
 use kube::runtime::reflector::ObjectRef;
 use kube::runtime::watcher;
+use kube::{CustomResource, Resource};
 use maplit::btreemap;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct SchemaData {
-    active: String,
-    content: String,
-}
-
-impl TryInto<SchemaFragment> for SchemaData {
+impl TryInto<SchemaFragment> for SchemaDocumentSpec {
     type Error = anyhow::Error;
 
     fn try_into(self) -> Result<SchemaFragment, Self::Error> {
-        SchemaFragment::from_json_str(self.content.as_str()).map_err(|err| anyhow!("{}", err))
+        SchemaFragment::from_json_str(self.schema.as_str()).map_err(|err| anyhow!("{}", err))
     }
 }
 
-impl TryFrom<SchemaFragment> for SchemaData {
+impl TryFrom<SchemaFragment> for SchemaDocumentSpec {
     type Error = anyhow::Error;
 
     fn try_from(schema: SchemaFragment) -> Result<Self, Self::Error> {
         let serialized = schema
             .to_json_value()
             .map_err(|err| anyhow!("Failed to convert schema to JSON string: {}", err))?;
-        Ok(SchemaData {
-            active: "true".to_string(),
-            content: serde_json::to_string_pretty(&serialized)?,
+        Ok(SchemaDocumentSpec {
+            active: true,
+            schema: serde_json::to_string_pretty(&serialized)?,
         })
     }
 }
 
-#[derive(Resource, Serialize, Deserialize, Clone, Debug)]
-#[resource(inherit = ConfigMap)]
-struct SchemaConfigMap {
-    metadata: ObjectMeta,
-    data: SchemaData,
+#[derive(CustomResource, Debug, Serialize, Deserialize, Default, Clone, JsonSchema)]
+#[kube(
+    group = "auth.sneaksanddata.com",
+    version = "v1beta1",
+    kind = "SchemaDocument",
+    plural = "schemas",
+    singular = "schema",
+    namespaced
+)]
+pub struct SchemaDocumentSpec {
+    pub schema: String,
+    pub active: bool,
 }
 
 pub struct KubernetesSchemaRepository {
-    resource_manger: SynchronizedKubernetesResourceManager<SchemaConfigMap>,
+    resource_manger: SynchronizedKubernetesResourceManager<SchemaDocument>,
     label_selector_key: String,
     label_selector_value: String,
 }
@@ -101,18 +102,18 @@ impl Drop for KubernetesSchemaRepository {
 }
 
 struct UpdateHandler;
-impl ResourceUpdateHandler<SchemaConfigMap> for UpdateHandler {
-    fn handle_update(&self, event: Result<SchemaConfigMap, watcher::Error>) -> impl Future<Output = ()> + Send {
+impl ResourceUpdateHandler<SchemaDocument> for UpdateHandler {
+    fn handle_update(&self, event: Result<SchemaDocument, watcher::Error>) -> impl Future<Output = ()> + Send {
         match event {
-            Ok(SchemaConfigMap {
+            Ok(SchemaDocument {
                 metadata:
                     ObjectMeta {
                         name: Some(name),
                         namespace: Some(namespace),
                         ..
                     },
-                data: _,
-            }) => debug!("Saw [{}] in [{}]", name, namespace),
+                spec: _,
+            }) => debug!("Saw schema [{}] in [{}]", name, namespace),
             Ok(_) => warn!("Saw an object without name or namespace"),
             Err(e) => warn!("watcher error: {}", e),
         }
@@ -126,11 +127,15 @@ impl ReadOnlyRepository<String, SchemaFragment> for KubernetesSchemaRepository {
 
     async fn get(&self, key: String) -> Result<SchemaFragment, Self::ReadError> {
         let or = ObjectRef::new(key.as_str()).within(self.resource_manger.namespace().as_str());
-        let resource_object = self.resource_manger.get(or).map_err(|e| anyhow!(e))?;
-        if resource_object.data.active.contains("false") {
+        let resource_object = self.resource_manger.get(or);
+        let resource_object = match resource_object {
+            Some(r) => r,
+            None => return Err(anyhow!("Resource not found: {}", key)),
+        };
+        if !resource_object.spec.active {
             return Err(anyhow!("Schema is not active"));
         }
-        let result: SchemaFragment = resource_object.data.clone().try_into()?;
+        let result: SchemaFragment = resource_object.spec.clone().try_into()?;
         Ok(result)
     }
 }
@@ -140,33 +145,21 @@ impl UpsertRepository<String, SchemaFragment> for KubernetesSchemaRepository {
     type Error = anyhow::Error;
 
     async fn upsert(&self, key: String, entity: SchemaFragment) -> Result<(), Self::Error> {
-        let updated_configmap = SchemaConfigMap {
-            metadata: ObjectMeta {
-                name: Some(key.clone()),
-                namespace: Some(self.resource_manger.namespace().clone()),
-                labels: Some(btreemap! {
-                    self.label_selector_key.clone() => self.label_selector_value.clone()
-                }),
-                ..Default::default()
-            },
-            data: entity.try_into()?,
+        let or = ObjectRef::new(key.as_str()).within(self.resource_manger.namespace().as_str());
+        let resource_ref = self.resource_manger.get(or);
+        let mut resource_ref = match resource_ref {
+            Some(r) => r,
+            None => return Err(anyhow!("Resource not found: {}", key)),
         };
-        self.resource_manger
-            .replace(&key, updated_configmap)
-            .await
-            .map_err(|e| anyhow!("Failed to update ConfigMap: {}", e))
+        let resource_object = Arc::make_mut(&mut resource_ref);
+        resource_object.spec.schema = entity.to_json_string()?;
+        self.resource_manger.replace(&key, resource_object.clone()).await
     }
 
-    async fn exists(&self, key: String) -> Result<bool, Self::Error> {
-        let or: ObjectRef<SchemaConfigMap> =
+    async fn exists(&self, key: String) -> bool {
+        let or: ObjectRef<SchemaDocument> =
             ObjectRef::new(key.as_str()).within(self.resource_manger.namespace().as_str());
-        self.resource_manger.get(or).map(|_| true).or_else(|e| {
-            if e.to_string().contains("not found") {
-                Ok(false)
-            } else {
-                Err(anyhow!(e))
-            }
-        })
+        self.resource_manger.get(or).map(|r| r.spec.active).unwrap_or(false)
     }
 }
 
@@ -176,12 +169,13 @@ impl CanDelete<String, SchemaFragment> for KubernetesSchemaRepository {
 
     async fn delete(&self, key: String) -> Result<(), Self::DeleteError> {
         let or = ObjectRef::new(key.as_str()).within(self.resource_manger.namespace().as_str());
-        let mut resource_ref = self.resource_manger.get(or).map_err(|e| anyhow!(e))?;
-        if resource_ref.data.active.contains("false") {
-            return Ok(());
-        }
+        let resource_ref = self.resource_manger.get(or);
+        let mut resource_ref = match resource_ref {
+            Some(r) => r,
+            None => return Err(anyhow!("Resource not found: {}", key)),
+        };
         let resource_object = Arc::make_mut(&mut resource_ref);
-        resource_object.data.active = "false".to_string();
+        resource_object.spec.active = false;
         self.resource_manger.replace(&key, resource_object.clone()).await
     }
 }

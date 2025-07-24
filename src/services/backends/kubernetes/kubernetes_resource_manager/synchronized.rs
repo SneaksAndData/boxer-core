@@ -1,17 +1,17 @@
 use super::{KubernetesResourceManager, KubernetesResourceManagerConfig, ResourceUpdateHandler};
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::KubernetesResourceWatcher;
 use anyhow::Error;
-use k8s_openapi::NamespaceResourceScope;
 use k8s_openapi::api::coordination::v1::Lease;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
-use kube::core::ErrorResponse;
+use k8s_openapi::NamespaceResourceScope;
 use kube::core::params::PostParams;
+use kube::core::ErrorResponse;
 use kube::runtime::reflector::ObjectRef;
 use kube::{Api, Client};
 use kubert::lease::{ClaimParams, LeaseManager};
 use log::info;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -65,7 +65,7 @@ where
         Ok(())
     }
 
-    pub fn get(&self, object_ref: ObjectRef<Resource>) -> Result<Arc<Resource>, Error> {
+    pub fn get(&self, object_ref: ObjectRef<Resource>) -> Option<Arc<Resource>> {
         self.resource_manager.get(object_ref)
     }
 

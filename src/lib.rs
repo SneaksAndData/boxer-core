@@ -1,5 +1,5 @@
 pub mod http;
 pub mod services;
 
-#[cfg(feature = "testing")]
+// #[cfg(feature = "testing")]
 pub mod testing;
