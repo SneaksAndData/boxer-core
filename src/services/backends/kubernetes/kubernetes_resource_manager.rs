@@ -3,18 +3,18 @@ pub mod synchronized;
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::{
     KubernetesResourceWatcher, ResourceUpdateHandler,
 };
-use anyhow::{Error, anyhow};
+use anyhow::{anyhow, Error};
 use async_trait::async_trait;
 use futures::StreamExt;
 use k8s_openapi::NamespaceResourceScope;
 use kube::api::PostParams;
 use kube::runtime::reflector::{ObjectRef, Store};
 use kube::runtime::watcher::Config;
-use kube::runtime::{WatchStreamExt, reflector, watcher};
+use kube::runtime::{reflector, watcher, WatchStreamExt};
 use kube::{Api, Client, Resource};
 use log::debug;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -111,14 +111,8 @@ where
         }
     }
 
-    pub fn get(&self, object_ref: ObjectRef<S>) -> Result<Arc<S>, Error> {
-        self.reader.get(&object_ref).ok_or_else(|| {
-            anyhow!(
-                "Object with name [{}] not found in namespace: {:?}",
-                object_ref.name,
-                object_ref.namespace
-            )
-        })
+    pub fn get(&self, object_ref: ObjectRef<S>) -> Option<Arc<S>> {
+        self.reader.get(&object_ref)
     }
 }
 

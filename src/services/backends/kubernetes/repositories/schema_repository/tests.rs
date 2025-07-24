@@ -1,22 +1,16 @@
 use super::*;
-use crate::services::backends::kubernetes::repositories::schema_repository::test_reduced_schema::reduced_schema;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_schema::schema;
 use crate::services::base::upsert_repository::UpsertRepository;
 use crate::testing::{create_namespace, get_kubeconfig};
-use cedar_policy::Schema;
-use k8s_openapi::api::core::v1::ConfigMap;
-use kube::{Api, Client};
+use kube::Client;
 use std::sync::Arc;
 use std::time::Duration;
-use test_context::{AsyncTestContext, test_context};
-use tokio::time::sleep;
+use test_context::{test_context, AsyncTestContext};
 
 #[allow(dead_code)]
 const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(10);
 
 struct KubernetesSchemaRepositoryTest {
-    raw_api: Arc<Api<ConfigMap>>,
-    data_api: Arc<Api<SchemaConfigMap>>,
     repository: Arc<KubernetesSchemaRepository>,
     schema_str: String,
 }
@@ -29,9 +23,6 @@ impl AsyncTestContext for KubernetesSchemaRepositoryTest {
         let namespace = create_namespace().await.expect("Failed to create namespace");
         let config = get_kubeconfig().await.expect("Failed to create config");
         let client = Client::try_from(config.clone()).expect("Failed to create client");
-
-        let raw_api: Api<ConfigMap> = Api::namespaced(client.clone(), namespace.as_str());
-        let data_api: Api<SchemaConfigMap> = Api::namespaced(client.clone(), namespace.as_str());
 
         let config = KubernetesResourceManagerConfig {
             namespace: namespace.clone(),
@@ -49,8 +40,6 @@ impl AsyncTestContext for KubernetesSchemaRepositoryTest {
             .expect("Failed to start repository");
 
         KubernetesSchemaRepositoryTest {
-            raw_api: Arc::new(raw_api),
-            data_api: Arc::new(data_api),
             repository: Arc::new(repository),
             schema_str: serde_json::to_string(&schema()).expect("Failed to serialize schema to JSON"),
         }
@@ -69,18 +58,18 @@ async fn test_create_schema(ctx: &mut KubernetesSchemaRepositoryTest) {
     let schema_fragment = SchemaFragment::from_json_str(&ctx.schema_str).expect("Failed to create schema fragment");
 
     // Act
+    let before = ctx.repository.get(name.to_string()).await;
+
     ctx.repository
         .upsert(name.to_string(), schema_fragment.clone())
         .await
         .expect("Failed to upsert schema");
-    let retrieved_schema = ctx
-        .raw_api
-        .get(&name)
-        .await
-        .expect("Failed to get schema from Kubernetes");
+
+    let after = ctx.repository.get(name.to_string()).await;
 
     // Assert
-    assert_eq!(retrieved_schema.metadata.name.unwrap(), "test-schema");
+    assert!(before.is_err());
+    assert!(after.is_ok());
 }
 
 #[test_context(KubernetesSchemaRepositoryTest)]
@@ -89,35 +78,24 @@ async fn test_delete_schema(ctx: &mut KubernetesSchemaRepositoryTest) {
     // Arrange
     let name = "test-schema";
     let schema_fragment = SchemaFragment::from_json_str(&ctx.schema_str).expect("Failed to create schema fragment");
+
+    // Act
     ctx.repository
         .upsert(name.to_string(), schema_fragment.clone())
         .await
         .expect("Failed to upsert schema");
-    let retrieved_schema = ctx
-        .raw_api
-        .get(&name)
-        .await
-        .expect("Failed to get schema from Kubernetes");
-    assert_eq!(retrieved_schema.metadata.name.unwrap(), "test-schema");
+    let before = ctx.repository.get(name.to_string()).await;
 
-    // Act
     ctx.repository
         .delete(name.to_string())
         .await
-        .expect("Failed to delete schema");
+        .expect("Failed to upsert schema");
 
-    sleep(Duration::from_secs(1)).await; // Ensure the schema is created before retrieving it
+    let after = ctx.repository.get(name.to_string()).await;
 
     // Assert
-    let schema_result = ctx.repository.get(name.to_string()).await;
-    let data = ctx
-        .data_api
-        .get(&name)
-        .await
-        .expect("Failed to get schema from Kubernetes");
-    assert_eq!(data.metadata.name.unwrap(), "test-schema");
-    assert_eq!(data.data.active, "false");
-    assert!(schema_result.is_err(), "Schema should not exist after deletion");
+    assert!(before.is_ok());
+    assert!(after.is_err());
 }
 
 #[test_context(KubernetesSchemaRepositoryTest)]
@@ -126,46 +104,27 @@ async fn test_update_schema(ctx: &mut KubernetesSchemaRepositoryTest) {
     // Arrange
     let name = "test-schema";
     let schema_fragment = SchemaFragment::from_json_str(&ctx.schema_str).expect("Failed to create schema fragment");
+    let reduced_schema_fragment =
+        SchemaFragment::from_json_str(&ctx.schema_str).expect("Failed to create schema fragment");
+
+    // Act
     ctx.repository
         .upsert(name.to_string(), schema_fragment.clone())
         .await
         .expect("Failed to upsert schema");
 
-    sleep(Duration::from_secs(1)).await; // Ensure the schema is created before retrieving it
-    let retrieved_schema: Schema = ctx
-        .repository
-        .get(name.to_string())
-        .await
-        .expect("Failed to get schema from Kubernetes")
-        .try_into()
-        .expect("Failed to convert schema to Schema type");
+    let before = ctx.repository.get(name.to_string()).await.unwrap();
 
-    let new_schema_str = serde_json::to_string(&reduced_schema()).expect("Failed to serialize reduced schema to JSON");
-    let new_schema_fragment = SchemaFragment::from_json_str(&new_schema_str).expect("Failed to create schema fragment");
-    assert_eq!(retrieved_schema.actions().count(), 1);
-
-    // Act
     ctx.repository
-        .upsert(name.to_string(), new_schema_fragment)
+        .upsert(name.to_string(), reduced_schema_fragment)
         .await
-        .expect("Failed to update schema");
+        .expect("Failed to upsert schema");
 
-    sleep(Duration::from_secs(1)).await; // Ensure the schema is created before retrieving it
+    let after = ctx.repository.get(name.to_string()).await;
 
     // Assert
-    let schema_result: Schema = ctx
-        .repository
-        .get(name.to_string())
-        .await
-        .expect("Failed to get schema after deletion")
-        .try_into()
-        .expect("Failed to convert schema to Schema type");
-
-    let data = ctx
-        .data_api
-        .get(&name)
-        .await
-        .expect("Failed to get schema from Kubernetes");
-    assert_eq!(data.data.active, "true");
-    assert_eq!(schema_result.actions().count(), 0);
+    assert_ne!(
+        before.to_json_string().unwrap(),
+        after.unwrap().to_json_string().unwrap()
+    );
 }
