@@ -39,9 +39,9 @@ where
         Ok(())
     }
 
-    async fn exists(&self, key: Key) -> Result<bool, Self::Error> {
+    async fn exists(&self, key: Key) -> bool {
         let read_guard = self.read().await;
-        Ok((*read_guard).get(&key).is_some())
+        (*read_guard).get(&key).is_some()
     }
 }
 
