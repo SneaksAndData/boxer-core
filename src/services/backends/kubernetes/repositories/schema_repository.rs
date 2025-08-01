@@ -73,6 +73,15 @@ pub struct SchemaDocumentSpec {
     pub active: bool,
 }
 
+impl Default for SchemaDocument {
+    fn default() -> Self {
+        SchemaDocument {
+            metadata: ObjectMeta::default(),
+            spec: SchemaDocumentSpec::default(),
+        }
+    }
+}
+
 pub struct KubernetesSchemaRepository {
     resource_manger: SynchronizedKubernetesResourceManager<SchemaDocument>,
     label_selector_key: String,
@@ -146,14 +155,16 @@ impl UpsertRepository<String, SchemaFragment> for KubernetesSchemaRepository {
 
     async fn upsert(&self, key: String, entity: SchemaFragment) -> Result<(), Self::Error> {
         let or = ObjectRef::new(key.as_str()).within(self.resource_manger.namespace().as_str());
-        let resource_ref = self.resource_manger.get(or);
-        let mut resource_ref = match resource_ref {
-            Some(r) => r,
-            None => return Err(anyhow!("Resource not found: {}", key)),
-        };
-        let resource_object = Arc::make_mut(&mut resource_ref);
-        resource_object.spec.schema = entity.to_json_string()?;
-        self.resource_manger.replace(&key, resource_object.clone()).await
+        let mut resource_ref = self.resource_manger.get(or).unwrap_or_default();
+        let resource_ref = Arc::make_mut(&mut resource_ref);
+        resource_ref.metadata.name = Some(key.clone());
+        resource_ref.metadata.labels = Some(btreemap! {
+            self.label_selector_key.clone() => self.label_selector_value.clone(),
+        });
+        resource_ref.metadata.namespace = Some(self.resource_manger.namespace().clone());
+        resource_ref.spec.schema = entity.to_json_string()?;
+        resource_ref.spec.active = true;
+        self.resource_manger.replace(&key, resource_ref.clone()).await
     }
 
     async fn exists(&self, key: String) -> bool {
