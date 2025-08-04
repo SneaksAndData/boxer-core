@@ -20,6 +20,7 @@ use std::{println as warn, println as debug};
 use super::super::kubernetes_resource_manager::synchronized::SynchronizedKubernetesResourceManager;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::KubernetesResourceManagerConfig;
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::ResourceUpdateHandler;
+use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
 use crate::services::base::upsert_repository::{
     CanDelete, ReadOnlyRepository, UpsertRepository, UpsertRepositoryWithDelete,
 };
@@ -93,7 +94,8 @@ impl KubernetesSchemaRepository {
     pub async fn start(config: KubernetesResourceManagerConfig) -> anyhow::Result<Self> {
         let label_selector_key = config.label_selector_key.clone();
         let label_selector_value = config.label_selector_value.clone();
-        let resource_manger = SynchronizedKubernetesResourceManager::start(config, Arc::new(UpdateHandler)).await?;
+        let resource_manger =
+            SynchronizedKubernetesResourceManager::start(config, Arc::new(LoggingUpdateHandler)).await?;
         Ok(KubernetesSchemaRepository {
             resource_manger,
             label_selector_key,
@@ -107,26 +109,6 @@ impl Drop for KubernetesSchemaRepository {
         if let Err(e) = self.resource_manger.stop() {
             warn!("Failed to stop KubernetesSchemaRepository: {}", e);
         }
-    }
-}
-
-struct UpdateHandler;
-impl ResourceUpdateHandler<SchemaDocument> for UpdateHandler {
-    fn handle_update(&self, event: Result<SchemaDocument, watcher::Error>) -> impl Future<Output = ()> + Send {
-        match event {
-            Ok(SchemaDocument {
-                metadata:
-                    ObjectMeta {
-                        name: Some(name),
-                        namespace: Some(namespace),
-                        ..
-                    },
-                spec: _,
-            }) => debug!("Saw schema [{}] in [{}]", name, namespace),
-            Ok(_) => warn!("Saw an object without name or namespace"),
-            Err(e) => warn!("watcher error: {}", e),
-        }
-        future::ready(())
     }
 }
 
