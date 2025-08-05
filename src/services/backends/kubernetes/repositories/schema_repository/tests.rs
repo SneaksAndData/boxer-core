@@ -2,7 +2,6 @@ use super::*;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_schema::schema;
 use crate::services::base::upsert_repository::UpsertRepository;
 use crate::testing::{create_namespace, get_kubeconfig};
-use kube::Client;
 use std::sync::Arc;
 use std::time::Duration;
 use test_context::{test_context, AsyncTestContext};
@@ -22,7 +21,6 @@ impl AsyncTestContext for KubernetesSchemaRepositoryTest {
     async fn setup() -> KubernetesSchemaRepositoryTest {
         let namespace = create_namespace().await.expect("Failed to create namespace");
         let config = get_kubeconfig().await.expect("Failed to create config");
-        let client = Client::try_from(config.clone()).expect("Failed to create client");
 
         let config = KubernetesResourceManagerConfig {
             namespace: namespace.clone(),
