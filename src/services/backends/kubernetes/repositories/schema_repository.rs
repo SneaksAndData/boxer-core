@@ -5,21 +5,17 @@ mod tests;
 #[cfg(test)]
 mod test_schema;
 
-#[cfg(test)]
-mod test_reduced_schema;
-
 // Use log crate when building application
 #[cfg(not(test))]
-use log::{debug, warn};
+use log::warn;
 
 // Workaround to use prinltn! for logs.
 #[cfg(test)]
-use std::{println as warn, println as debug};
+use std::println as warn;
 
 // Other imports
 use super::super::kubernetes_resource_manager::synchronized::SynchronizedKubernetesResourceManager;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::KubernetesResourceManagerConfig;
-use crate::services::backends::kubernetes::kubernetes_resource_watcher::ResourceUpdateHandler;
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
 use crate::services::base::upsert_repository::{
     CanDelete, ReadOnlyRepository, UpsertRepository, UpsertRepositoryWithDelete,
@@ -27,12 +23,10 @@ use crate::services::base::upsert_repository::{
 use anyhow::anyhow;
 use async_trait::async_trait;
 use cedar_policy::SchemaFragment;
-use futures::future;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use k8s_openapi::serde_json;
 use kube::runtime::reflector::ObjectRef;
-use kube::runtime::watcher;
-use kube::{CustomResource, Resource};
+use kube::CustomResource;
 use maplit::btreemap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
