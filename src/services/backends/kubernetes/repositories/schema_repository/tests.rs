@@ -1,10 +1,11 @@
 use super::*;
+use crate::services::backends::kubernetes::repositories::schema_repository::test_reduced_schema::reduced_schema;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_schema::schema;
 use crate::services::base::upsert_repository::UpsertRepository;
 use crate::testing::{create_namespace, get_kubeconfig};
 use std::sync::Arc;
 use std::time::Duration;
-use test_context::{AsyncTestContext, test_context};
+use test_context::{test_context, AsyncTestContext};
 
 struct KubernetesSchemaRepositoryTest {
     repository: Arc<KubernetesSchemaRepository>,
@@ -99,8 +100,9 @@ async fn test_update_schema(ctx: &mut KubernetesSchemaRepositoryTest) {
     // Arrange
     let name = "test-schema";
     let schema_fragment = SchemaFragment::from_json_str(&ctx.schema_str).expect("Failed to create schema fragment");
+    let reduced_schema = serde_json::to_string(&reduced_schema()).expect("Failed to create schema fragment");
     let reduced_schema_fragment =
-        SchemaFragment::from_json_str(&ctx.schema_str).expect("Failed to create schema fragment");
+        SchemaFragment::from_json_str(&reduced_schema).expect("Failed to create schema fragment");
 
     // Act
     ctx.repository
@@ -114,6 +116,8 @@ async fn test_update_schema(ctx: &mut KubernetesSchemaRepositoryTest) {
         .upsert(name.to_string(), reduced_schema_fragment)
         .await
         .expect("Failed to upsert schema");
+
+    tokio::time::sleep(Duration::from_secs(1)).await; // Wait for the update to propagate
 
     let after = ctx.repository.get(name.to_string()).await;
 

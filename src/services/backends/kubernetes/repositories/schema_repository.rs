@@ -2,6 +2,7 @@
 #[cfg(test)]
 mod tests;
 
+mod test_reduced_schema;
 #[cfg(test)]
 mod test_schema;
 
