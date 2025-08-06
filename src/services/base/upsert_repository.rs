@@ -9,7 +9,7 @@ pub trait UpsertRepository<Key, Entity>: ReadOnlyRepository<Key, Entity> + Send 
     async fn upsert(&self, key: Key, entity: Entity) -> Result<(), Self::Error>;
 
     /// Checks if an object exists
-    async fn exists(&self, key: Key) -> Result<bool, Self::Error>;
+    async fn exists(&self, key: Key) -> bool;
 }
 
 #[async_trait]

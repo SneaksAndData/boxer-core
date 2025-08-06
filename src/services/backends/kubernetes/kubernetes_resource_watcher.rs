@@ -9,11 +9,12 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
 
+#[async_trait]
 pub trait ResourceUpdateHandler<S>: Send + Sync
 where
     S: Resource + Send + Sync,
 {
-    fn handle_update(&self, result: Result<S, watcher::Error>) -> impl Future<Output = ()> + Send;
+    async fn handle_update(&self, result: Result<S, watcher::Error>) -> ();
 }
 
 #[async_trait]

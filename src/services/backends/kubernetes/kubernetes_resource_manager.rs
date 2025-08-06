@@ -111,14 +111,8 @@ where
         }
     }
 
-    pub fn get(&self, object_ref: ObjectRef<S>) -> Result<Arc<S>, Error> {
-        self.reader.get(&object_ref).ok_or_else(|| {
-            anyhow!(
-                "Object with name [{}] not found in namespace: {:?}",
-                object_ref.name,
-                object_ref.namespace
-            )
-        })
+    pub fn get(&self, object_ref: ObjectRef<S>) -> Option<Arc<S>> {
+        self.reader.get(&object_ref)
     }
 }
 
