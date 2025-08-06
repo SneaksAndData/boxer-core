@@ -4,7 +4,7 @@ use crate::services::base::upsert_repository::UpsertRepository;
 use crate::testing::{create_namespace, get_kubeconfig};
 use std::sync::Arc;
 use std::time::Duration;
-use test_context::{test_context, AsyncTestContext};
+use test_context::{AsyncTestContext, test_context};
 
 const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(10);
 
