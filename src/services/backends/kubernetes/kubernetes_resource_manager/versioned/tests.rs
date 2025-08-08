@@ -1,11 +1,15 @@
 use crate::services::backends::kubernetes::repositories::schema_repository::models::{
     SchemaDocument, SchemaDocumentSpec,
 };
+use crate::testing::api_extensions::WaitForResource;
 use crate::testing::versioned_kubernetes_resource_manager_context::VersionedKubernetesResourceManagerTestContext;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::runtime::reflector::ObjectRef;
 use maplit::btreemap;
+use std::time::Duration;
 use test_context::test_context;
+
+const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(10);
 
 fn create_object(name: &str, namespace: &str, resource_version: String) -> SchemaDocument {
     SchemaDocument {
@@ -86,10 +90,10 @@ async fn test_get_object(ctx: &mut VersionedKubernetesResourceManagerTestContext
     // Simulate a parallel update
     let _ = ctx.manager.upsert(object_ref, resource).await.unwrap();
 
-    // ctx.api_context
-    //     .api
-    //     .wait_for_creation(object_ref, DEFAULT_TEST_TIMEOUT)
-    //     .await;
+    ctx.api_context
+        .api
+        .wait_for_creation(name.to_string(), ctx.manager.namespace(), DEFAULT_TEST_TIMEOUT)
+        .await;
 
     // Act
     let operation_status = ctx.manager.get(object_ref).unwrap_err().to_string();
