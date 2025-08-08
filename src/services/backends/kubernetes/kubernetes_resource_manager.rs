@@ -21,6 +21,7 @@ use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
+use std::time::Duration;
 
 pub trait UpdateLabels: Resource<Scope = NamespaceResourceScope> {
     fn update_labels(self, custom_labels: &mut BTreeMap<String, String>) -> Self;
@@ -34,7 +35,8 @@ pub struct KubernetesResourceManagerConfig {
     pub label_selector_value: String,
     pub kubeconfig: kube::Config,
 
-    field_manager: String,
+    pub field_manager: String,
+    pub operation_timeout: Duration,
 }
 
 impl KubernetesResourceManagerConfig {
@@ -46,6 +48,7 @@ impl KubernetesResourceManagerConfig {
             label_selector_value,
             kubeconfig: self.kubeconfig.clone(),
             field_manager: self.field_manager.clone(),
+            operation_timeout: self.operation_timeout.clone(),
         }
     }
 }
@@ -86,7 +89,6 @@ where
         }
     }
 
-    #[allow(dead_code)]
     pub fn namespace(&self) -> String {
         self.namespace.clone()
     }
@@ -132,15 +134,13 @@ where
 
     pub async fn upsert_object(&self, object_ref: &ObjectRef<S>, resource: S) -> Result<S, kube::Error> {
         let patch = Patch::Apply(resource.update_labels(&mut self.custom_labels.clone()));
-        self.api
-            .patch(&object_ref.name, &PatchParams::apply("boxer"), &patch)
-            .await
+        self.api.patch(&object_ref.name, &self.patch_params(), &patch).await
     }
 
     pub async fn update(&self, name: String, new_object: &S) -> Result<S, Error> {
         self.api
-            .replace(&name, &PostParams::default(), new_object)
-            .await // TODO: add field manager
+            .replace(&name, &self.post_params(), new_object)
+            .await
             .map_err(|e| anyhow!("Failed to create resource: {}", e))
     }
 
@@ -155,13 +155,27 @@ where
         debug!("Labels: {:?}", new_object.meta().labels);
 
         self.api
-            .create(&PostParams::default(), &new_object)
-            .await // TODO: add field manager
+            .create(&self.post_params(), &new_object)
+            .await
             .map_err(|e| anyhow!("Failed to create resource: {}", e))
     }
 
     pub fn get(&self, object_ref: &ObjectRef<S>) -> Option<Arc<S>> {
         self.reader.get(object_ref)
+    }
+
+    fn post_params(&self) -> PostParams {
+        PostParams {
+            field_manager: Some(self.field_manager.clone()),
+            ..Default::default()
+        }
+    }
+
+    fn patch_params(&self) -> PatchParams {
+        PatchParams {
+            field_manager: Some(self.field_manager.clone()),
+            ..Default::default()
+        }
     }
 }
 

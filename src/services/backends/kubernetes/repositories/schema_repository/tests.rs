@@ -23,6 +23,7 @@ impl AsyncTestContext for KubernetesSchemaRepositoryTest {
         let parent = VersionedKubernetesResourceManagerTestContext::setup().await;
         let repository = Arc::new(KubernetesRepository {
             resource_manager: parent.manager,
+            operation_timeout: parent.config.operation_timeout,
         });
         Self {
             repository,

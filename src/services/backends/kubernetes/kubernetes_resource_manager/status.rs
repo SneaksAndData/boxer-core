@@ -11,6 +11,7 @@ pub enum Status {
     NotFound(NotFoundDetails),
     Deleted(NotFoundDetails),
     ConversionError(anyhow::Error),
+    Timeout(String),
 }
 
 impl Status {
@@ -39,6 +40,7 @@ impl Display for Status {
             Status::NotFound(details) => write!(f, "Resource not found: {}", details),
             Status::Deleted(details) => write!(f, "Resource was deleted not found: {}", details),
             Status::ConversionError(cause) => write!(f, "Conversion error occurred: {}", cause),
+            Status::Timeout(message) => write!(f, "Operation timed out: {}", message),
         }
     }
 }

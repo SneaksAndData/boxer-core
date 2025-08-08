@@ -11,7 +11,6 @@ testing = []
 # Kubernetes dependencies
 kube = { version = "0.99.0", features = ["config", "client", "runtime", "derive"] }
 k8s-openapi = { version = "0.24.0", features = ["latest"] }
-kubert = { version = "0.24.0", features = ["lease"] }
 
 # Other dependencies
 anyhow = "1.0.86"
@@ -27,7 +26,7 @@ tokio = { version = "1", features = ["full"] }
 serde_yml = "0.0.12"
 schemars = "0.8.6"
 assert_matches = "1.5.0"
+test-context = "0.4.1"
 
 [dev-dependencies]
-test-context = "0.4.1"
 serde_yml = "0.0.12"

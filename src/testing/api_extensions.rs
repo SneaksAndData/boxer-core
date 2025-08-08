@@ -4,6 +4,7 @@ use kube::runtime::reflector::{Lookup, ObjectRef};
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::time::Duration;
+use tokio::time::Instant;
 
 #[allow(async_fn_in_trait)]
 pub trait WaitForResource<T: Lookup> {
@@ -23,7 +24,7 @@ where
     async fn wait_for_creation(&self, name: String, namespace: String, timeout: Duration) -> T {
         let mut object_ref: ObjectRef<T> = ObjectRef::new(&name);
         object_ref.namespace = Some(namespace);
-        let start_time = std::time::Instant::now();
+        let start_time = Instant::now();
         loop {
             if let Ok(Some(object)) = self.get_opt(&object_ref.name).await {
                 return object;

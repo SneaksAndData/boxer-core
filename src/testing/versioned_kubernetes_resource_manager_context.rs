@@ -24,6 +24,7 @@ impl AsyncTestContext for VersionedKubernetesResourceManagerTestContext {
             label_selector_value: "versioned-resource".to_string(),
             kubeconfig: api_context.config().clone(),
             field_manager: "boxer".to_string(),
+            operation_timeout: std::time::Duration::from_secs(30),
         };
 
         let manager = VersionedKubernetesResourceManager::start(config.clone(), Arc::new(LoggingUpdateHandler))
