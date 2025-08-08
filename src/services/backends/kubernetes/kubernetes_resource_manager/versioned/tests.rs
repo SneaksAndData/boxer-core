@@ -1,0 +1,99 @@
+use crate::services::backends::kubernetes::repositories::schema_repository::models::{
+    SchemaDocument, SchemaDocumentSpec,
+};
+use crate::testing::versioned_kubernetes_resource_manager_context::VersionedKubernetesResourceManagerTestContext;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+use kube::runtime::reflector::ObjectRef;
+use maplit::btreemap;
+use test_context::test_context;
+
+fn create_object(name: &str, namespace: &str, resource_version: String) -> SchemaDocument {
+    SchemaDocument {
+        metadata: ObjectMeta {
+            name: Some(name.to_string()),
+            namespace: Some(namespace.to_string()),
+            labels: Some(btreemap! {
+                "repository.boxer.io/test".to_string() => "test-label".to_string(),
+            }),
+            resource_version: Some(resource_version),
+            ..Default::default()
+        },
+        spec: SchemaDocumentSpec {
+            schema: "{}".to_string(),
+            active: true,
+        },
+        ..Default::default()
+    }
+}
+
+#[test_context(VersionedKubernetesResourceManagerTestContext)]
+#[tokio::test]
+async fn test_create_object(ctx: &mut VersionedKubernetesResourceManagerTestContext) {
+    // Arrange
+    let name = "test-object";
+    let resource = create_object(name, &ctx.config.namespace, Default::default());
+    let object_ref = &ObjectRef::from(&resource);
+
+    // Act
+    let created_object = ctx.manager.upsert(object_ref, resource).await;
+
+    assert!(created_object.is_ok());
+    let created_object = created_object.unwrap();
+    let labels = created_object.metadata.labels.unwrap();
+
+    assert!(labels.contains_key(ctx.config.label_selector_key.as_str()));
+    assert_eq!(
+        labels.get(ctx.config.label_selector_key.as_str()),
+        Some(&ctx.config.label_selector_value)
+    );
+    assert!(labels.contains_key("repository.boxer.io/test"));
+}
+
+#[test_context(VersionedKubernetesResourceManagerTestContext)]
+#[tokio::test]
+async fn test_patch_unexisted_object(ctx: &mut VersionedKubernetesResourceManagerTestContext) {
+    // Arrange
+    let name = "test-object";
+    let resource = create_object(name, &ctx.config.namespace, Default::default());
+    let object_ref = &ObjectRef::from(&resource);
+    // Simulate a parallel update
+    let mut created_object = ctx.manager.upsert(object_ref, resource).await.unwrap();
+    created_object.metadata.managed_fields = None;
+    created_object.spec.active = false;
+
+    let _ = ctx.manager.upsert(object_ref, created_object.clone()).await;
+
+    // Act
+    let operation_status = ctx
+        .manager
+        .upsert(object_ref, created_object)
+        .await
+        .unwrap_err()
+        .to_string();
+
+    // Assert
+    assert_eq!(operation_status, "Conflict error occurred");
+}
+
+#[test_context(VersionedKubernetesResourceManagerTestContext)]
+#[tokio::test]
+async fn test_get_object(ctx: &mut VersionedKubernetesResourceManagerTestContext) {
+    // Arrange
+    let name = "test-object";
+    let resource = create_object(name, &ctx.config.namespace, Default::default());
+    let object_ref = &ObjectRef::from(&resource);
+
+    // Simulate a parallel update
+    let _ = ctx.manager.upsert(object_ref, resource).await.unwrap();
+
+    // ctx.api_context
+    //     .api
+    //     .wait_for_creation(object_ref, DEFAULT_TEST_TIMEOUT)
+    //     .await;
+
+    // Act
+    let operation_status = ctx.manager.get(object_ref).unwrap_err().to_string();
+
+    // Assert
+    assert_eq!(operation_status, "Conflict error occurred");
+}

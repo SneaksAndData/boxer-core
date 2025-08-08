@@ -26,6 +26,7 @@ uuid = { version = "1.17.0", features = ["v4"] }
 tokio = { version = "1", features = ["full"] }
 serde_yml = "0.0.12"
 schemars = "0.8.6"
+assert_matches = "1.5.0"
 
 [dev-dependencies]
 test-context = "0.4.1"

@@ -1,24 +1,30 @@
-pub mod synchronized;
+pub mod status;
+pub mod versioned;
 
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::{
     KubernetesResourceWatcher, ResourceUpdateHandler,
 };
-use anyhow::{Error, anyhow};
+use anyhow::{anyhow, Error};
 use async_trait::async_trait;
 use futures::StreamExt;
 use k8s_openapi::NamespaceResourceScope;
-use kube::api::PostParams;
+use kube::api::{Patch, PatchParams, PostParams};
 use kube::runtime::reflector::{ObjectRef, Store};
 use kube::runtime::watcher::Config;
-use kube::runtime::{WatchStreamExt, reflector, watcher};
+use kube::runtime::{reflector, watcher, WatchStreamExt};
 use kube::{Api, Client, Resource};
 use log::debug;
-use serde::Serialize;
+use maplit::btreemap;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
-use std::time::Duration;
+
+pub trait UpdateLabels: Resource<Scope = NamespaceResourceScope> {
+    fn update_labels(self, custom_labels: &mut BTreeMap<String, String>) -> Self;
+}
 
 /// Configuration for the Kubernetes repository.
 #[derive(Clone)]
@@ -28,10 +34,7 @@ pub struct KubernetesResourceManagerConfig {
     pub label_selector_value: String,
     pub kubeconfig: kube::Config,
 
-    pub lease_name: String,
-    pub claimant: String,
-    pub lease_duration: Duration,
-    pub renew_deadline: Duration,
+    field_manager: String,
 }
 
 impl KubernetesResourceManagerConfig {
@@ -42,10 +45,7 @@ impl KubernetesResourceManagerConfig {
             label_selector_key,
             label_selector_value,
             kubeconfig: self.kubeconfig.clone(),
-            lease_name: self.lease_name.clone(),
-            claimant: self.claimant.clone(),
-            lease_duration: self.lease_duration,
-            renew_deadline: self.renew_deadline,
+            field_manager: self.field_manager.clone(),
         }
     }
 }
@@ -59,19 +59,30 @@ where
     handle: tokio::task::JoinHandle<()>,
     api: Api<StoredObject>,
     namespace: String,
+    field_manager: String,
+    pub custom_labels: BTreeMap<String, String>,
 }
 
 impl<S> KubernetesResourceManager<S>
 where
-    S: Resource<Scope = NamespaceResourceScope> + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
+    S: UpdateLabels + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
     S::DynamicType: Hash + Eq + Clone + Default,
 {
-    pub fn new(reader: Store<S>, handle: tokio::task::JoinHandle<()>, api: Api<S>, namespace: String) -> Self {
+    pub fn new(
+        reader: Store<S>,
+        handle: tokio::task::JoinHandle<()>,
+        api: Api<S>,
+        namespace: String,
+        field_manager: String,
+        custom_labels: BTreeMap<String, String>,
+    ) -> Self {
         KubernetesResourceManager {
             reader,
             handle,
             api,
             namespace,
+            field_manager,
+            custom_labels,
         }
     }
 
@@ -111,15 +122,53 @@ where
         }
     }
 
-    pub fn get(&self, object_ref: ObjectRef<S>) -> Option<Arc<S>> {
-        self.reader.get(&object_ref)
+    pub async fn replace_object(&self, object_ref: ObjectRef<S>, new_object: S) -> Result<S, Error> {
+        let old_object = self.get(&object_ref);
+        match old_object {
+            None => self.create(new_object).await,
+            Some(_) => self.update(object_ref.name, &new_object).await,
+        }
+    }
+
+    pub async fn upsert_object(&self, object_ref: &ObjectRef<S>, resource: S) -> Result<S, kube::Error> {
+        let patch = Patch::Apply(resource.update_labels(&mut self.custom_labels.clone()));
+        self.api
+            .patch(&object_ref.name, &PatchParams::apply("boxer"), &patch)
+            .await
+    }
+
+    pub async fn update(&self, name: String, new_object: &S) -> Result<S, Error> {
+        self.api
+            .replace(&name, &PostParams::default(), new_object)
+            .await // TODO: add field manager
+            .map_err(|e| anyhow!("Failed to create resource: {}", e))
+    }
+
+    pub async fn create(&self, mut new_object: S) -> Result<S, Error> {
+        debug!(
+            "Creating new resource: {}",
+            new_object.meta().name.as_deref().unwrap_or("unknown")
+        );
+        let mut labels = new_object.meta().clone().labels.unwrap_or_default();
+        labels.extend(self.custom_labels.clone());
+        new_object.meta_mut().labels = Some(labels);
+        debug!("Labels: {:?}", new_object.meta().labels);
+
+        self.api
+            .create(&PostParams::default(), &new_object)
+            .await // TODO: add field manager
+            .map_err(|e| anyhow!("Failed to create resource: {}", e))
+    }
+
+    pub fn get(&self, object_ref: &ObjectRef<S>) -> Option<Arc<S>> {
+        self.reader.get(object_ref)
     }
 }
 
 #[async_trait]
 impl<S> KubernetesResourceWatcher<S> for KubernetesResourceManager<S>
 where
-    S: Resource<Scope = NamespaceResourceScope> + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
+    S: UpdateLabels + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
     S::DynamicType: Hash + Eq + Clone + Default,
 {
     async fn start<H>(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<Self>
@@ -148,7 +197,17 @@ where
         let handle = tokio::spawn(reflector);
         reader.wait_until_ready().await?;
 
-        Ok(KubernetesResourceManager::new(reader, handle, api, config.namespace))
+        let custom_labels = btreemap! {
+            config.label_selector_key.clone() => config.label_selector_value.clone(),
+        };
+        Ok(KubernetesResourceManager::new(
+            reader,
+            handle,
+            api,
+            config.namespace,
+            config.field_manager,
+            custom_labels,
+        ))
     }
 
     fn stop(&self) -> anyhow::Result<()> {
