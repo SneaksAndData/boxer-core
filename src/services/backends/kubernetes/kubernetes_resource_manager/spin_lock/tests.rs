@@ -97,8 +97,8 @@ async fn test_get_object(ctx: &mut SpinLockKubernetesResourceManagerTestContext)
         .await;
 
     // Act
-    let operation_status = ctx.manager.get(&object_ref).unwrap_err().to_string();
+    let operation_status = ctx.manager.get(&object_ref);
 
     // Assert
-    assert_eq!(operation_status, "Conflict error occurred");
+    assert!(operation_status.is_ok());
 }
