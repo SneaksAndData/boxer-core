@@ -1,6 +1,6 @@
 use crate::services::backends::kubernetes::repositories::SoftDeleteResource;
-use kube::runtime::reflector::{Lookup, ObjectRef};
 use kube::Api;
+use kube::runtime::reflector::{Lookup, ObjectRef};
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::time::Duration;

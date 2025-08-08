@@ -4,19 +4,19 @@ pub mod versioned;
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::{
     KubernetesResourceWatcher, ResourceUpdateHandler,
 };
-use anyhow::{anyhow, Error};
+use anyhow::{Error, anyhow};
 use async_trait::async_trait;
 use futures::StreamExt;
 use k8s_openapi::NamespaceResourceScope;
 use kube::api::{Patch, PatchParams, PostParams};
 use kube::runtime::reflector::{ObjectRef, Store};
 use kube::runtime::watcher::Config;
-use kube::runtime::{reflector, watcher, WatchStreamExt};
+use kube::runtime::{WatchStreamExt, reflector, watcher};
 use kube::{Api, Client, Resource};
 use log::debug;
 use maplit::btreemap;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::hash::Hash;

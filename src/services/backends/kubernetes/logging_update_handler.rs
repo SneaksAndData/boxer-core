@@ -7,8 +7,8 @@ use std::{println as warn, println as debug};
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::ResourceUpdateHandler;
 use async_trait::async_trait;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
-use kube::runtime::watcher;
 use kube::Resource;
+use kube::runtime::watcher;
 
 use std::fmt::Debug;
 

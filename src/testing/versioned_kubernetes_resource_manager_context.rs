@@ -1,5 +1,5 @@
-use crate::services::backends::kubernetes::kubernetes_resource_manager::versioned::VersionedKubernetesResourceManager;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::KubernetesResourceManagerConfig;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::versioned::VersionedKubernetesResourceManager;
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
 use crate::services::backends::kubernetes::repositories::schema_repository::models::SchemaDocument;
 use crate::testing::api_client_context::ApiClientContext;
