@@ -1,5 +1,5 @@
+pub mod spin_lock;
 pub mod status;
-pub mod versioned;
 
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::{
     KubernetesResourceWatcher, ResourceUpdateHandler,

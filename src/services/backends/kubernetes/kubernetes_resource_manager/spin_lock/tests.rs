@@ -2,7 +2,7 @@ use crate::services::backends::kubernetes::repositories::schema_repository::mode
     SchemaDocument, SchemaDocumentSpec,
 };
 use crate::testing::api_extensions::WaitForResource;
-use crate::testing::versioned_kubernetes_resource_manager_context::VersionedKubernetesResourceManagerTestContext;
+use crate::testing::spin_lock_kubernetes_resource_manager_context::SpinLockKubernetesResourceManagerTestContext;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::runtime::reflector::ObjectRef;
 use maplit::btreemap;
@@ -30,9 +30,9 @@ fn create_object(name: &str, namespace: &str, resource_version: String) -> Schem
     }
 }
 
-#[test_context(VersionedKubernetesResourceManagerTestContext)]
+#[test_context(SpinLockKubernetesResourceManagerTestContext)]
 #[tokio::test]
-async fn test_create_object(ctx: &mut VersionedKubernetesResourceManagerTestContext) {
+async fn test_create_object(ctx: &mut SpinLockKubernetesResourceManagerTestContext) {
     // Arrange
     let name = "test-object";
     let resource = create_object(name, &ctx.config.namespace, Default::default());
@@ -53,9 +53,9 @@ async fn test_create_object(ctx: &mut VersionedKubernetesResourceManagerTestCont
     assert!(labels.contains_key("repository.boxer.io/test"));
 }
 
-#[test_context(VersionedKubernetesResourceManagerTestContext)]
+#[test_context(SpinLockKubernetesResourceManagerTestContext)]
 #[tokio::test]
-async fn test_patch_unexisted_object(ctx: &mut VersionedKubernetesResourceManagerTestContext) {
+async fn test_patch_unexisted_object(ctx: &mut SpinLockKubernetesResourceManagerTestContext) {
     // Arrange
     let name = "test-object";
     let resource = create_object(name, &ctx.config.namespace, Default::default());
@@ -79,16 +79,17 @@ async fn test_patch_unexisted_object(ctx: &mut VersionedKubernetesResourceManage
     assert_eq!(operation_status, "Conflict error occurred");
 }
 
-#[test_context(VersionedKubernetesResourceManagerTestContext)]
+#[test_context(SpinLockKubernetesResourceManagerTestContext)]
 #[tokio::test]
-async fn test_get_object(ctx: &mut VersionedKubernetesResourceManagerTestContext) {
+async fn test_get_object(ctx: &mut SpinLockKubernetesResourceManagerTestContext) {
     // Arrange
     let name = "test-object";
     let resource = create_object(name, &ctx.config.namespace, Default::default());
-    let object_ref = &ObjectRef::from(&resource);
+    let mut object_ref = ObjectRef::from(&resource);
+    object_ref.namespace = Some(ctx.config.namespace.clone());
 
     // Simulate a parallel update
-    let _ = ctx.manager.upsert(object_ref, resource).await.unwrap();
+    let _ = ctx.manager.upsert(&object_ref, resource).await.unwrap();
 
     ctx.api_context
         .api
@@ -96,7 +97,7 @@ async fn test_get_object(ctx: &mut VersionedKubernetesResourceManagerTestContext
         .await;
 
     // Act
-    let operation_status = ctx.manager.get(object_ref).unwrap_err().to_string();
+    let operation_status = ctx.manager.get(&object_ref).unwrap_err().to_string();
 
     // Assert
     assert_eq!(operation_status, "Conflict error occurred");

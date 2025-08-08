@@ -4,7 +4,7 @@ use crate::services::backends::kubernetes::kubernetes_resource_manager::status::
 use crate::services::backends::kubernetes::repositories::schema_repository::test_reduced_schema::reduced_schema;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_schema::schema;
 use crate::testing::api_extensions::{WaitForDelete, WaitForResource};
-use crate::testing::versioned_kubernetes_resource_manager_context::VersionedKubernetesResourceManagerTestContext;
+use crate::testing::spin_lock_kubernetes_resource_manager_context::SpinLockKubernetesResourceManagerTestContext;
 use assert_matches::assert_matches;
 use kube::Api;
 use std::time::Duration;
@@ -20,7 +20,7 @@ struct KubernetesSchemaRepositoryTest {
 
 impl AsyncTestContext for KubernetesSchemaRepositoryTest {
     async fn setup() -> KubernetesSchemaRepositoryTest {
-        let parent = VersionedKubernetesResourceManagerTestContext::setup().await;
+        let parent = SpinLockKubernetesResourceManagerTestContext::setup().await;
         let repository = Arc::new(KubernetesRepository {
             resource_manager: parent.manager,
             operation_timeout: parent.config.operation_timeout,

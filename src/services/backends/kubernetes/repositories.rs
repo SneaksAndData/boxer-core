@@ -1,5 +1,5 @@
+use crate::services::backends::kubernetes::kubernetes_resource_manager::spin_lock::SpinLockKubernetesResourceManager;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::{NotFoundDetails, Status};
-use crate::services::backends::kubernetes::kubernetes_resource_manager::versioned::VersionedKubernetesResourceManager;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::{
     KubernetesResourceManagerConfig, UpdateLabels,
 };
@@ -76,7 +76,7 @@ where
     Resource: kube::Resource + SoftDeleteResource + Send + Sync + 'static,
     Resource::DynamicType: Hash + Eq,
 {
-    resource_manager: VersionedKubernetesResourceManager<Resource>,
+    resource_manager: SpinLockKubernetesResourceManager<Resource>,
     operation_timeout: Duration,
 }
 
@@ -87,8 +87,7 @@ where
 {
     pub async fn start(config: KubernetesResourceManagerConfig) -> anyhow::Result<Self> {
         let operation_timeout = config.operation_timeout;
-        let resource_manager =
-            VersionedKubernetesResourceManager::start(config, Arc::new(LoggingUpdateHandler)).await?;
+        let resource_manager = SpinLockKubernetesResourceManager::start(config, Arc::new(LoggingUpdateHandler)).await?;
         Ok(KubernetesRepository {
             resource_manager,
             operation_timeout,

@@ -10,8 +10,8 @@ use uuid::Uuid;
 //#[cfg(feature = "testing")]
 pub mod api_client_context;
 pub mod api_extensions;
+pub mod spin_lock_kubernetes_resource_manager_context;
 pub mod temp_namespace_context;
-pub mod versioned_kubernetes_resource_manager_context;
 
 pub async fn get_kubeconfig() -> anyhow::Result<Config> {
     let output = Command::new("kind")

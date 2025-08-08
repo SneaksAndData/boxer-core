@@ -11,7 +11,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
 
-pub struct VersionedKubernetesResourceManager<R>
+pub struct SpinLockKubernetesResourceManager<R>
 where
     R: kube::Resource + 'static,
     R::DynamicType: Hash + Eq,
@@ -19,13 +19,13 @@ where
     resource_manager: KubernetesResourceManager<R>,
 }
 
-impl<R> VersionedKubernetesResourceManager<R>
+impl<R> SpinLockKubernetesResourceManager<R>
 where
     R: UpdateLabels + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
     R::DynamicType: Hash + Eq + Clone + Default,
 {
     pub fn new(resource_manager: KubernetesResourceManager<R>) -> Self {
-        VersionedKubernetesResourceManager { resource_manager }
+        SpinLockKubernetesResourceManager { resource_manager }
     }
 
     pub async fn upsert(&self, object_ref: &ObjectRef<R>, resource: R) -> Result<R, Status> {
@@ -48,7 +48,7 @@ where
         H: ResourceUpdateHandler<R> + Send + Sync + 'static,
     {
         let resource_manager = KubernetesResourceManager::start(config.clone(), update_handler).await?;
-        Ok(VersionedKubernetesResourceManager::new(resource_manager))
+        Ok(SpinLockKubernetesResourceManager::new(resource_manager))
     }
 
     pub fn stop(&self) -> anyhow::Result<()> {
