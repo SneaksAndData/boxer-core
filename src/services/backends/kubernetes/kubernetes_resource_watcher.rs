@@ -1,10 +1,10 @@
 use crate::services::backends::kubernetes::kubernetes_resource_manager::KubernetesResourceManagerConfig;
 use async_trait::async_trait;
 use k8s_openapi::NamespaceResourceScope;
-use kube::runtime::watcher;
 use kube::Resource;
-use serde::de::DeserializeOwned;
+use kube::runtime::watcher;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
