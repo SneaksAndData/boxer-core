@@ -45,10 +45,10 @@ async fn test_create_object(ctx: &mut SpinLockKubernetesResourceManagerTestConte
     let created_object = created_object.unwrap();
     let labels = created_object.metadata.labels.unwrap();
 
-    assert!(labels.contains_key(ctx.config.label_selector_key.as_str()));
+    assert!(labels.contains_key(ctx.config.listener_config.label_selector_key.as_str()));
     assert_eq!(
-        labels.get(ctx.config.label_selector_key.as_str()),
-        Some(&ctx.config.label_selector_value)
+        labels.get(ctx.config.listener_config.label_selector_key.as_str()),
+        Some(&ctx.config.listener_config.label_selector_value)
     );
     assert!(labels.contains_key("repository.boxer.io/test"));
 }

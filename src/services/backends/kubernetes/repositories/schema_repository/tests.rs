@@ -23,7 +23,7 @@ impl AsyncTestContext for KubernetesSchemaRepositoryTest {
         let parent = SpinLockKubernetesResourceManagerTestContext::setup().await;
         let repository = Arc::new(KubernetesRepository {
             resource_manager: parent.manager,
-            operation_timeout: parent.config.operation_timeout,
+            operation_timeout: parent.config.listener_config.operation_timeout,
         });
         Self {
             repository,

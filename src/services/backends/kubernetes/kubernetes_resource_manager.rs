@@ -28,39 +28,38 @@ pub trait UpdateLabels: Resource<Scope = NamespaceResourceScope> {
 }
 
 /// Configuration for the Kubernetes repository.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct KubernetesResourceManagerConfig {
     pub namespace: String,
+    pub kubeconfig: kube::Config,
+    pub field_manager: String,
+    pub listener_config: ListenerConfig,
+}
+
+#[derive(Debug, Clone)]
+pub struct ListenerConfig {
     pub label_selector_key: String,
     pub label_selector_value: String,
-    pub kubeconfig: kube::Config,
-
-    pub field_manager: String,
     pub operation_timeout: Duration,
 }
 
-impl KubernetesResourceManagerConfig {
-    #[allow(dead_code)]
-    pub fn clone_with_label_selector(&self, label_selector_key: String, label_selector_value: String) -> Self {
-        KubernetesResourceManagerConfig {
-            namespace: self.namespace.clone(),
-            label_selector_key,
-            label_selector_value,
-            kubeconfig: self.kubeconfig.clone(),
-            field_manager: self.field_manager.clone(),
-            operation_timeout: self.operation_timeout.clone(),
+impl Into<Config> for &ListenerConfig {
+    fn into(self) -> Config {
+        Config {
+            label_selector: Some(format!("{}={}", self.label_selector_key, self.label_selector_value)),
+            ..Default::default()
         }
     }
 }
 
-pub struct KubernetesResourceManager<StoredObject>
+pub struct KubernetesResourceManager<R>
 where
-    StoredObject: Resource + 'static,
-    StoredObject::DynamicType: Hash + Eq,
+    R: Resource + 'static,
+    R::DynamicType: Hash + Eq,
 {
-    reader: Store<StoredObject>,
+    reader: Store<R>,
     handle: tokio::task::JoinHandle<()>,
-    api: Api<StoredObject>,
+    api: Api<R>,
     namespace: String,
     field_manager: String,
     pub custom_labels: BTreeMap<String, String>,
@@ -180,22 +179,19 @@ where
 }
 
 #[async_trait]
-impl<S> KubernetesResourceWatcher<S> for KubernetesResourceManager<S>
+impl<H, S> KubernetesResourceWatcher<H, S> for KubernetesResourceManager<S>
 where
     S: UpdateLabels + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
     S::DynamicType: Hash + Eq + Clone + Default,
+    H: ResourceUpdateHandler<S> + Send + Sync + 'static,
 {
-    async fn start<H>(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<Self>
+    async fn start(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<Self>
     where
         H: ResourceUpdateHandler<S> + Send + Sync + 'static,
     {
         let client = Client::try_from(config.kubeconfig)?;
         let api: Api<S> = Api::namespaced(client.clone(), config.namespace.as_str());
-        let watcher_config = Config {
-            label_selector: Some(format!("{}={}", config.label_selector_key, config.label_selector_value)),
-            ..Default::default()
-        };
-        let stream = watcher(api.clone(), watcher_config);
+        let stream = watcher(api.clone(), (&config.listener_config).into());
         let (reader, writer) = reflector::store();
 
         let reflector = reflector(writer, stream)
@@ -211,8 +207,10 @@ where
         let handle = tokio::spawn(reflector);
         reader.wait_until_ready().await?;
 
+        let label_selector_key = config.listener_config.label_selector_key.clone();
+        let label_selector_value = config.listener_config.label_selector_value.clone();
         let custom_labels = btreemap! {
-            config.label_selector_key.clone() => config.label_selector_value.clone(),
+            label_selector_key => label_selector_value,
         };
         Ok(KubernetesResourceManager::new(
             reader,

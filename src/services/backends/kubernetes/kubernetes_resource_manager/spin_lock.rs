@@ -3,6 +3,7 @@ mod tests;
 use super::{KubernetesResourceManager, KubernetesResourceManagerConfig, ResourceUpdateHandler, UpdateLabels};
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::KubernetesResourceWatcher;
+use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
 use anyhow::Error;
 use kube::runtime::reflector::ObjectRef;
 use serde::Serialize;
@@ -47,12 +48,14 @@ where
     where
         H: ResourceUpdateHandler<R> + Send + Sync + 'static,
     {
-        let resource_manager = KubernetesResourceManager::start(config.clone(), update_handler).await?;
+        let resource_manager = KubernetesResourceManager::start(config, update_handler).await?;
         Ok(SpinLockKubernetesResourceManager::new(resource_manager))
     }
 
     pub fn stop(&self) -> anyhow::Result<()> {
-        self.resource_manager.stop()
+        <KubernetesResourceManager<R> as KubernetesResourceWatcher<LoggingUpdateHandler, R>>::stop(
+            &self.resource_manager,
+        )
     }
 
     pub fn namespace(&self) -> String {

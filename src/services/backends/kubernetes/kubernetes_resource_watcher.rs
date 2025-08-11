@@ -18,14 +18,13 @@ where
 }
 
 #[async_trait]
-pub trait KubernetesResourceWatcher<R>: Sized
+pub trait KubernetesResourceWatcher<H, R>: Sized
 where
     R: Resource<Scope = NamespaceResourceScope> + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
     R::DynamicType: Hash + Eq + Clone + Default,
+    H: ResourceUpdateHandler<R> + Send + Sync + 'static,
 {
-    async fn start<H>(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<Self>
-    where
-        H: ResourceUpdateHandler<R> + Send + Sync + 'static;
+    async fn start(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<Self>;
 
     fn stop(&self) -> anyhow::Result<()>;
 }

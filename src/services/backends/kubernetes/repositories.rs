@@ -86,7 +86,7 @@ where
     R::DynamicType: Hash + Eq + Clone + Default,
 {
     pub async fn start(config: KubernetesResourceManagerConfig) -> anyhow::Result<Self> {
-        let operation_timeout = config.operation_timeout;
+        let operation_timeout = config.listener_config.operation_timeout;
         let resource_manager = SpinLockKubernetesResourceManager::start(config, Arc::new(LoggingUpdateHandler)).await?;
         Ok(KubernetesRepository {
             resource_manager,

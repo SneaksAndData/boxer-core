@@ -1,5 +1,6 @@
 use kube::core::ErrorResponse;
 use kube::runtime::reflector::ObjectRef;
+use std::error::Error;
 use std::fmt::{Display, Formatter};
 
 /// The backend error type for Kubernetes resource management operations.
@@ -44,6 +45,8 @@ impl Display for Status {
         }
     }
 }
+
+impl Error for Status {}
 
 #[derive(Debug)]
 pub struct NotFoundDetails {
