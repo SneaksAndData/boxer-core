@@ -8,7 +8,7 @@ use crate::testing::spin_lock_kubernetes_resource_manager_context::SpinLockKuber
 use assert_matches::assert_matches;
 use kube::Api;
 use std::time::Duration;
-use test_context::{test_context, AsyncTestContext};
+use test_context::{AsyncTestContext, test_context};
 
 const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(10);
 
