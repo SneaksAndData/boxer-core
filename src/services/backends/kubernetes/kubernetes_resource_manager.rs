@@ -4,19 +4,19 @@ pub mod status;
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::{
     KubernetesResourceWatcher, ResourceUpdateHandler,
 };
-use anyhow::{Error, anyhow};
+use anyhow::{anyhow, Error};
 use async_trait::async_trait;
 use futures::StreamExt;
 use k8s_openapi::NamespaceResourceScope;
 use kube::api::{Patch, PatchParams, PostParams};
 use kube::runtime::reflector::{ObjectRef, Store};
 use kube::runtime::watcher::Config;
-use kube::runtime::{WatchStreamExt, reflector, watcher};
+use kube::runtime::{reflector, watcher, WatchStreamExt};
 use kube::{Api, Client, Resource};
 use log::debug;
 use maplit::btreemap;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -52,14 +52,14 @@ impl Into<Config> for &ListenerConfig {
     }
 }
 
-pub struct KubernetesResourceManager<StoredObject>
+pub struct KubernetesResourceManager<R>
 where
-    StoredObject: Resource + 'static,
-    StoredObject::DynamicType: Hash + Eq,
+    R: Resource + 'static,
+    R::DynamicType: Hash + Eq,
 {
-    reader: Store<StoredObject>,
+    reader: Store<R>,
     handle: tokio::task::JoinHandle<()>,
-    api: Api<StoredObject>,
+    api: Api<R>,
     namespace: String,
     field_manager: String,
     pub custom_labels: BTreeMap<String, String>,
@@ -179,12 +179,13 @@ where
 }
 
 #[async_trait]
-impl<S> KubernetesResourceWatcher<S> for KubernetesResourceManager<S>
+impl<H, S> KubernetesResourceWatcher<H, S> for KubernetesResourceManager<S>
 where
     S: UpdateLabels + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
     S::DynamicType: Hash + Eq + Clone + Default,
+    H: ResourceUpdateHandler<S> + Send + Sync + 'static,
 {
-    async fn start<H>(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<Self>
+    async fn start(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<Self>
     where
         H: ResourceUpdateHandler<S> + Send + Sync + 'static,
     {
