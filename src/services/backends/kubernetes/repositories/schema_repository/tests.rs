@@ -8,7 +8,7 @@ use crate::testing::spin_lock_kubernetes_resource_manager_context::SpinLockKuber
 use assert_matches::assert_matches;
 use kube::Api;
 use std::time::Duration;
-use test_context::{AsyncTestContext, test_context};
+use test_context::{test_context, AsyncTestContext};
 
 const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -23,7 +23,7 @@ impl AsyncTestContext for KubernetesSchemaRepositoryTest {
         let parent = SpinLockKubernetesResourceManagerTestContext::setup().await;
         let repository = Arc::new(KubernetesRepository {
             resource_manager: parent.manager,
-            operation_timeout: parent.config.operation_timeout,
+            operation_timeout: parent.config.listener_config.operation_timeout,
         });
         Self {
             repository,

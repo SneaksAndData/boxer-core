@@ -5,8 +5,8 @@ use crate::services::backends::kubernetes::kubernetes_resource_manager::status::
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::KubernetesResourceWatcher;
 use anyhow::Error;
 use kube::runtime::reflector::ObjectRef;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -47,7 +47,7 @@ where
     where
         H: ResourceUpdateHandler<R> + Send + Sync + 'static,
     {
-        let resource_manager = KubernetesResourceManager::start(config.clone(), update_handler).await?;
+        let resource_manager = KubernetesResourceManager::start(config, update_handler).await?;
         Ok(SpinLockKubernetesResourceManager::new(resource_manager))
     }
 

@@ -4,19 +4,19 @@ pub mod status;
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::{
     KubernetesResourceWatcher, ResourceUpdateHandler,
 };
-use anyhow::{Error, anyhow};
+use anyhow::{anyhow, Error};
 use async_trait::async_trait;
 use futures::StreamExt;
 use k8s_openapi::NamespaceResourceScope;
 use kube::api::{Patch, PatchParams, PostParams};
 use kube::runtime::reflector::{ObjectRef, Store};
 use kube::runtime::watcher::Config;
-use kube::runtime::{WatchStreamExt, reflector, watcher};
+use kube::runtime::{reflector, watcher, WatchStreamExt};
 use kube::{Api, Client, Resource};
 use log::debug;
 use maplit::btreemap;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -28,27 +28,26 @@ pub trait UpdateLabels: Resource<Scope = NamespaceResourceScope> {
 }
 
 /// Configuration for the Kubernetes repository.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct KubernetesResourceManagerConfig {
     pub namespace: String,
+    pub kubeconfig: kube::Config,
+    pub field_manager: String,
+    pub listener_config: ListenerConfig,
+}
+
+#[derive(Debug, Clone)]
+pub struct ListenerConfig {
     pub label_selector_key: String,
     pub label_selector_value: String,
-    pub kubeconfig: kube::Config,
-
-    pub field_manager: String,
     pub operation_timeout: Duration,
 }
 
-impl KubernetesResourceManagerConfig {
-    #[allow(dead_code)]
-    pub fn clone_with_label_selector(&self, label_selector_key: String, label_selector_value: String) -> Self {
-        KubernetesResourceManagerConfig {
-            namespace: self.namespace.clone(),
-            label_selector_key,
-            label_selector_value,
-            kubeconfig: self.kubeconfig.clone(),
-            field_manager: self.field_manager.clone(),
-            operation_timeout: self.operation_timeout.clone(),
+impl Into<Config> for &ListenerConfig {
+    fn into(self) -> Config {
+        Config {
+            label_selector: Some(format!("{}={}", self.label_selector_key, self.label_selector_value)),
+            ..Default::default()
         }
     }
 }
@@ -191,11 +190,7 @@ where
     {
         let client = Client::try_from(config.kubeconfig)?;
         let api: Api<S> = Api::namespaced(client.clone(), config.namespace.as_str());
-        let watcher_config = Config {
-            label_selector: Some(format!("{}={}", config.label_selector_key, config.label_selector_value)),
-            ..Default::default()
-        };
-        let stream = watcher(api.clone(), watcher_config);
+        let stream = watcher(api.clone(), (&config.listener_config).into());
         let (reader, writer) = reflector::store();
 
         let reflector = reflector(writer, stream)
@@ -211,8 +206,10 @@ where
         let handle = tokio::spawn(reflector);
         reader.wait_until_ready().await?;
 
+        let label_selector_key = config.listener_config.label_selector_key.clone();
+        let label_selector_value = config.listener_config.label_selector_value.clone();
         let custom_labels = btreemap! {
-            config.label_selector_key.clone() => config.label_selector_value.clone(),
+            label_selector_key => label_selector_value,
         };
         Ok(KubernetesResourceManager::new(
             reader,

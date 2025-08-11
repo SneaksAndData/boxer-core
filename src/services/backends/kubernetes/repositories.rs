@@ -6,11 +6,11 @@ use crate::services::backends::kubernetes::kubernetes_resource_manager::{
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
 use crate::services::base::upsert_repository::{CanDelete, ReadOnlyRepository, UpsertRepository};
 use async_trait::async_trait;
-use k8s_openapi::NamespaceResourceScope;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+use k8s_openapi::NamespaceResourceScope;
 use kube::runtime::reflector::ObjectRef;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -86,7 +86,7 @@ where
     R::DynamicType: Hash + Eq + Clone + Default,
 {
     pub async fn start(config: KubernetesResourceManagerConfig) -> anyhow::Result<Self> {
-        let operation_timeout = config.operation_timeout;
+        let operation_timeout = config.listener_config.operation_timeout;
         let resource_manager = SpinLockKubernetesResourceManager::start(config, Arc::new(LoggingUpdateHandler)).await?;
         Ok(KubernetesRepository {
             resource_manager,

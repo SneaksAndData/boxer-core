@@ -1,9 +1,12 @@
-use crate::services::backends::kubernetes::kubernetes_resource_manager::KubernetesResourceManagerConfig;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::spin_lock::SpinLockKubernetesResourceManager;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::{
+    KubernetesResourceManagerConfig, ListenerConfig,
+};
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
 use crate::services::backends::kubernetes::repositories::schema_repository::models::SchemaDocument;
 use crate::testing::api_client_context::ApiClientContext;
 use std::sync::Arc;
+use std::time::Duration;
 use test_context::AsyncTestContext;
 
 pub struct SpinLockKubernetesResourceManagerTestContext {
@@ -20,11 +23,13 @@ impl AsyncTestContext for SpinLockKubernetesResourceManagerTestContext {
 
         let config = KubernetesResourceManagerConfig {
             namespace: api_context.namespace().to_string(),
-            label_selector_key: "repository.boxer.io/type".to_string(),
-            label_selector_value: "resource".to_string(),
             kubeconfig: api_context.config().clone(),
             field_manager: "boxer".to_string(),
-            operation_timeout: std::time::Duration::from_secs(30),
+            listener_config: ListenerConfig {
+                label_selector_key: "repository.boxer.io/test".to_string(),
+                label_selector_value: "test-label".to_string(),
+                operation_timeout: Duration::from_secs(10),
+            },
         };
 
         let manager = SpinLockKubernetesResourceManager::start(config.clone(), Arc::new(LoggingUpdateHandler))
