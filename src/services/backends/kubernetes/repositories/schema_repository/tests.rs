@@ -8,7 +8,7 @@ use crate::testing::spin_lock_kubernetes_resource_manager_context::SpinLockKuber
 use assert_matches::assert_matches;
 use kube::Api;
 use std::time::Duration;
-use test_context::{AsyncTestContext, test_context};
+use test_context::{test_context, AsyncTestContext};
 
 const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -73,9 +73,9 @@ async fn test_update_schema(ctx: &mut KubernetesSchemaRepositoryTest) {
         .upsert(name.to_string(), schema_fragment.clone())
         .await
         .expect("Failed to upsert schema");
-    // ctx.api
-    //     .wait_for_creation(&ObjectRef::new(name), DEFAULT_TEST_TIMEOUT)
-    //     .await;
+    ctx.api
+        .wait_for_creation(name.to_string(), ctx.namespace.to_string(), DEFAULT_TEST_TIMEOUT)
+        .await;
     let before = ctx.repository.get(name.to_string()).await.unwrap();
 
     // Act
