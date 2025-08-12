@@ -1,4 +1,4 @@
-use crate::services::backends::kubernetes::repositories::schema_repository::models::{
+use crate::services::backends::kubernetes::repositories::schema_repository::schema_document::{
     SchemaDocument, SchemaDocumentSpec,
 };
 use crate::testing::api_extensions::WaitForResource;
