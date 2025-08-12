@@ -11,9 +11,7 @@ use crate::services::backends::kubernetes::kubernetes_resource_manager::status::
 use crate::services::backends::kubernetes::repositories::schema_repository::schema_document::{
     SchemaDocument, SchemaDocumentSpec,
 };
-use crate::services::backends::kubernetes::repositories::{
-    KubernetesRepository, SoftDeleteResource, ToResource, TryFromResource,
-};
+use crate::services::backends::kubernetes::repositories::{KubernetesRepository, ToResource, TryFromResource};
 use crate::services::base::upsert_repository::UpsertRepositoryWithDelete;
 use cedar_policy::SchemaFragment;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
