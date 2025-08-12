@@ -3,7 +3,7 @@ use crate::services::backends::kubernetes::kubernetes_resource_manager::{
     KubernetesResourceManagerConfig, ListenerConfig,
 };
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
-use crate::services::backends::kubernetes::repositories::schema_repository::models::SchemaDocument;
+use crate::services::backends::kubernetes::repositories::schema_repository::schema_document::SchemaDocument;
 use crate::testing::api_client_context::ApiClientContext;
 use std::sync::Arc;
 use std::time::Duration;
