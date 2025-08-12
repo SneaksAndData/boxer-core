@@ -1,25 +1,34 @@
 use crate::services::backends::kubernetes::kubernetes_resource_manager::spin_lock::SpinLockKubernetesResourceManager;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::{
-    KubernetesResourceManagerConfig, ListenerConfig,
+    KubernetesResourceManagerConfig, ListenerConfig, UpdateLabels,
 };
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
-use crate::services::backends::kubernetes::repositories::schema_repository::schema_document::SchemaDocument;
 use crate::testing::api_client_context::ApiClientContext;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::sync::Arc;
 use std::time::Duration;
 use test_context::AsyncTestContext;
 
-pub struct SpinLockKubernetesResourceManagerTestContext {
-    pub manager: SpinLockKubernetesResourceManager<SchemaDocument>,
+pub struct SpinLockKubernetesResourceManagerTestContext<R>
+where
+    R: kube::Resource + 'static,
+    R::DynamicType: Hash + Eq,
+{
+    pub manager: SpinLockKubernetesResourceManager<R>,
     pub config: KubernetesResourceManagerConfig,
-    pub api_context: ApiClientContext<SchemaDocument>,
+    pub api_context: ApiClientContext<R>,
 }
 
-impl SpinLockKubernetesResourceManagerTestContext {}
-
-impl AsyncTestContext for SpinLockKubernetesResourceManagerTestContext {
+impl<R> AsyncTestContext for SpinLockKubernetesResourceManagerTestContext<R>
+where
+    R: kube::Resource + UpdateLabels + Clone + Debug + Serialize + DeserializeOwned + Send + Sync + 'static,
+    R::DynamicType: Hash + Eq + Clone + Default,
+{
     async fn setup() -> Self {
-        let api_context: ApiClientContext<SchemaDocument> = ApiClientContext::setup().await;
+        let api_context: ApiClientContext<R> = ApiClientContext::setup().await;
 
         let config = KubernetesResourceManagerConfig {
             namespace: api_context.namespace().to_string(),

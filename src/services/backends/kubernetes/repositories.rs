@@ -6,11 +6,11 @@ use crate::services::backends::kubernetes::kubernetes_resource_manager::{
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
 use crate::services::base::upsert_repository::{CanDelete, ReadOnlyRepository, UpsertRepository};
 use async_trait::async_trait;
-use k8s_openapi::NamespaceResourceScope;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+use k8s_openapi::NamespaceResourceScope;
 use kube::runtime::reflector::ObjectRef;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -76,8 +76,8 @@ where
     Resource: kube::Resource + SoftDeleteResource + Send + Sync + 'static,
     Resource::DynamicType: Hash + Eq,
 {
-    resource_manager: SpinLockKubernetesResourceManager<Resource>,
-    operation_timeout: Duration,
+    pub resource_manager: SpinLockKubernetesResourceManager<Resource>,
+    pub operation_timeout: Duration,
 }
 
 impl<R> KubernetesRepository<R>
