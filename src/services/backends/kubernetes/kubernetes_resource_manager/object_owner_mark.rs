@@ -1,5 +1,7 @@
-use kube::Resource;
+mod tests;
+
 use kube::runtime::watcher::Config;
+use kube::Resource;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 
@@ -38,7 +40,7 @@ impl ObjectOwnerMark {
     }
 
     pub fn get_owner_name(&self) -> String {
-        self.value.clone()
+        self.key.clone()
     }
 }
 

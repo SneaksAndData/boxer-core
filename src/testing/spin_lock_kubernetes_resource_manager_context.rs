@@ -5,8 +5,8 @@ use crate::services::backends::kubernetes::kubernetes_resource_manager::{
 };
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
 use crate::testing::api_client_context::ApiClientContext;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -34,7 +34,7 @@ where
         let config = KubernetesResourceManagerConfig {
             namespace: api_context.namespace().to_string(),
             kubeconfig: api_context.config().clone(),
-            owner_mark: ObjectOwnerMark::new("boxer.io", "test-owner"),
+            owner_mark: ObjectOwnerMark::new("boxer.io", "unit-tests"),
             operation_timeout: Duration::from_secs(10),
         };
 

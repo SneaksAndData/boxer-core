@@ -1,19 +1,20 @@
 use super::*;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status::Deleted;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::not_found_details::NotFoundDetails;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::owner_conflict_details::OwnerConflictDetails;
-use crate::services::backends::kubernetes::repositories::TryIntoObjectRef;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status::{Deleted, NotOwned};
 use crate::services::backends::kubernetes::repositories::schema_repository::test_reduced_schema::reduced_schema;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_schema::schema;
+use crate::services::backends::kubernetes::repositories::TryIntoObjectRef;
 use crate::testing::api_extensions::{WaitForDelete, WaitForResource};
 use crate::testing::spin_lock_kubernetes_resource_manager_context::SpinLockKubernetesResourceManagerTestContext;
 use assert_matches::assert_matches;
-use kube::Api;
 use kube::api::PostParams;
 use kube::runtime::reflector::ObjectRef;
+use kube::Api;
+use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::time::Duration;
-use test_context::{AsyncTestContext, test_context};
+use test_context::{test_context, AsyncTestContext};
 
 const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -201,7 +202,7 @@ async fn test_schema_other_owner_conflict(ctx: &mut KubernetesSchemaRepositoryTe
     let owner = "test-owner".to_string();
     let resource = SchemaDocument {
         metadata: ObjectMeta {
-            labels: Some(BTreeMap::from([(ctx.label.clone(), owner.clone())])),
+            labels: Some(btreemap! {ctx.label.clone() => owner.clone()}),
             name: Some(name.to_string()),
             namespace: Some(ctx.namespace.clone()),
             ..Default::default()
@@ -211,7 +212,7 @@ async fn test_schema_other_owner_conflict(ctx: &mut KubernetesSchemaRepositoryTe
 
     // Act
     let pp = PostParams {
-        field_manager: Some("test-manager".to_string()),
+        field_manager: Some(owner.clone()),
         ..Default::default()
     };
     ctx.api.create(&pp, &resource).await.unwrap();
@@ -224,7 +225,7 @@ async fn test_schema_other_owner_conflict(ctx: &mut KubernetesSchemaRepositoryTe
     // Assert
     assert_matches!(
         insertion_result,
-        Err(Status::NotOwned(OwnerConflictDetails {
+        Err(NotOwned(OwnerConflictDetails {
             object_name: _,
             object_namespace: _,
             current_owner: Some(_),
