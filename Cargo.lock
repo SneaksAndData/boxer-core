@@ -422,11 +422,13 @@ dependencies = [
  "assert_matches",
  "async-trait",
  "cedar-policy",
+ "duration-string",
  "futures",
  "k8s-openapi",
  "kube",
  "log",
  "maplit",
+ "regex",
  "schemars 0.8.22",
  "serde",
  "serde_json",
@@ -744,6 +746,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "duration-string"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04782251e09dc67c90d694d89e9a3e5fc6cfe883df1b203202de672d812fb299"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -2627,9 +2638,9 @@ checksum = "56199f7ddabf13fe5074ce809e7d3f42b42ae711800501b5b16ea82ad029c39d"
 
 [[package]]
 name = "slab"
-version = "0.4.10"
+version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04dc19736151f35336d325007ac991178d504a119863a2fcb3758cdb5e52c50d"
+checksum = "7a2ae44ef20feb57a68b23d846850f861394c2e02dc425a50098ae8c90267589"
 
 [[package]]
 name = "smallvec"
