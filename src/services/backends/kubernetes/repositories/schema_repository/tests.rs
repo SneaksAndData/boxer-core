@@ -73,9 +73,9 @@ async fn test_update_schema(ctx: &mut KubernetesSchemaRepositoryTest) {
         .upsert(name.to_string(), schema_fragment.clone())
         .await
         .expect("Failed to upsert schema");
-    // ctx.api
-    //     .wait_for_creation(&ObjectRef::new(name), DEFAULT_TEST_TIMEOUT)
-    //     .await;
+    ctx.api
+        .wait_for_creation(name.to_string(), ctx.namespace.to_string(), DEFAULT_TEST_TIMEOUT)
+        .await;
     let before = ctx.repository.get(name.to_string()).await.unwrap();
 
     // Act

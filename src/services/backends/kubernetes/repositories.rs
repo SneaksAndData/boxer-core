@@ -76,8 +76,8 @@ where
     Resource: kube::Resource + SoftDeleteResource + Send + Sync + 'static,
     Resource::DynamicType: Hash + Eq,
 {
-    resource_manager: SpinLockKubernetesResourceManager<Resource>,
-    operation_timeout: Duration,
+    pub resource_manager: SpinLockKubernetesResourceManager<Resource>,
+    pub operation_timeout: Duration,
 }
 
 impl<R> KubernetesRepository<R>

@@ -1,4 +1,5 @@
 use crate::services::backends::kubernetes::kubernetes_resource_manager::UpdateLabels;
+use crate::services::backends::kubernetes::repositories::SoftDeleteResource;
 use anyhow::anyhow;
 use cedar_policy::SchemaFragment;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
@@ -38,25 +39,25 @@ impl TryInto<SchemaFragment> for SchemaDocumentSpec {
     }
 }
 
-impl TryFrom<SchemaFragment> for SchemaDocumentSpec {
-    type Error = anyhow::Error;
-
-    fn try_from(schema: SchemaFragment) -> Result<Self, Self::Error> {
-        let serialized = schema
-            .to_json_value()
-            .map_err(|err| anyhow!("Failed to convert schema to JSON string: {}", err))?;
-        Ok(SchemaDocumentSpec {
-            active: true,
-            schema: serde_json::to_string_pretty(&serialized)?,
-        })
-    }
-}
-
 impl Default for SchemaDocument {
     fn default() -> Self {
         SchemaDocument {
             metadata: ObjectMeta::default(),
             spec: SchemaDocumentSpec::default(),
         }
+    }
+}
+
+impl SoftDeleteResource for SchemaDocument {
+    fn is_deleted(&self) -> bool {
+        !self.spec.active
+    }
+
+    fn set_deleted(&mut self) {
+        self.spec.active = false;
+    }
+
+    fn clear_managed_fields(&mut self) {
+        self.metadata.managed_fields = None;
     }
 }

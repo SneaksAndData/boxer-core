@@ -28,6 +28,7 @@ schemars = "0.8.6"
 assert_matches = "1.5.0"
 test-context = "0.4.1"
 actix-web = "4.11.0"
+duration-string = { version = "0.5.2", features = ["serde"] }
 
 [dev-dependencies]
 serde_yml = "0.0.12"

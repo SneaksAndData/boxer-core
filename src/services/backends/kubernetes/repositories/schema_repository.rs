@@ -2,36 +2,20 @@
 #[cfg(test)]
 mod tests;
 
-pub mod models;
+pub mod schema_document;
 mod test_reduced_schema;
 #[cfg(test)]
 mod test_schema;
 
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
-use crate::services::backends::kubernetes::repositories::schema_repository::models::{
+use crate::services::backends::kubernetes::repositories::schema_repository::schema_document::{
     SchemaDocument, SchemaDocumentSpec,
 };
-use crate::services::backends::kubernetes::repositories::{
-    KubernetesRepository, SoftDeleteResource, ToResource, TryFromResource,
-};
+use crate::services::backends::kubernetes::repositories::{KubernetesRepository, ToResource, TryFromResource};
 use crate::services::base::upsert_repository::UpsertRepositoryWithDelete;
 use cedar_policy::SchemaFragment;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use std::sync::Arc;
-
-impl SoftDeleteResource for SchemaDocument {
-    fn is_deleted(&self) -> bool {
-        !self.spec.active
-    }
-
-    fn set_deleted(&mut self) {
-        self.spec.active = false;
-    }
-
-    fn clear_managed_fields(&mut self) {
-        self.metadata.managed_fields = None;
-    }
-}
 
 impl ToResource<SchemaDocument> for SchemaFragment {
     fn to_resource(&self, object_meta: &ObjectMeta) -> Result<SchemaDocument, Status> {
