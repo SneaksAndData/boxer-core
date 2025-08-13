@@ -3,24 +3,24 @@ pub mod spin_lock;
 pub mod status;
 
 use crate::services::backends::kubernetes::kubernetes_resource_manager::object_owner_mark::ObjectOwnerMark;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::status::owner_conflict_details::OwnerConflictDetails;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status::{Conflict, NotOwned};
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::owner_conflict_details::OwnerConflictDetails;
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::{
     KubernetesResourceWatcher, ResourceUpdateHandler,
 };
-use anyhow::{anyhow, Error};
+use anyhow::{Error, anyhow};
 use async_trait::async_trait;
 use futures::StreamExt;
 use k8s_openapi::NamespaceResourceScope;
 use kube::api::{Patch, PatchParams, PostParams};
 use kube::core::ErrorResponse;
 use kube::runtime::reflector::{ObjectRef, Store};
-use kube::runtime::{reflector, watcher, WatchStreamExt};
+use kube::runtime::{WatchStreamExt, reflector, watcher};
 use kube::{Api, Client, Resource};
 use log::debug;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::hash::Hash;

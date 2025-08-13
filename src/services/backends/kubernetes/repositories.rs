@@ -1,19 +1,19 @@
 use crate::services::backends::kubernetes::kubernetes_resource_manager::spin_lock::SpinLockKubernetesResourceManager;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::status::not_found_details::NotFoundDetails;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::not_found_details::NotFoundDetails;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::{
     KubernetesResourceManagerConfig, UpdateLabels,
 };
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
 use crate::services::base::upsert_repository::{CanDelete, ReadOnlyRepository, UpsertRepository};
 use async_trait::async_trait;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use k8s_openapi::NamespaceResourceScope;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::runtime::reflector::ObjectRef;
 use log::debug;
 use regex::Regex;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;

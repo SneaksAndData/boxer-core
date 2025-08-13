@@ -1,5 +1,5 @@
-use crate::services::backends::kubernetes::repositories::schema_repository::schema_document::SchemaDocument;
 use crate::services::backends::kubernetes::repositories::TryIntoObjectRef;
+use crate::services::backends::kubernetes::repositories::schema_repository::schema_document::SchemaDocument;
 use kube::runtime::reflector::ObjectRef;
 
 #[test]
