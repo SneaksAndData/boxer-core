@@ -1,22 +1,26 @@
+pub mod object_owner_mark;
 pub mod spin_lock;
 pub mod status;
 
+use crate::services::backends::kubernetes::kubernetes_resource_manager::object_owner_mark::ObjectOwnerMark;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::owner_conflict_details::OwnerConflictDetails;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status::{Conflict, NotOwned};
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::{
     KubernetesResourceWatcher, ResourceUpdateHandler,
 };
-use anyhow::{Error, anyhow};
+use anyhow::{anyhow, Error};
 use async_trait::async_trait;
 use futures::StreamExt;
 use k8s_openapi::NamespaceResourceScope;
 use kube::api::{Patch, PatchParams, PostParams};
+use kube::core::ErrorResponse;
 use kube::runtime::reflector::{ObjectRef, Store};
-use kube::runtime::watcher::Config;
-use kube::runtime::{WatchStreamExt, reflector, watcher};
+use kube::runtime::{reflector, watcher, WatchStreamExt};
 use kube::{Api, Client, Resource};
 use log::debug;
-use maplit::btreemap;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -32,24 +36,8 @@ pub trait UpdateLabels: Resource<Scope = NamespaceResourceScope> {
 pub struct KubernetesResourceManagerConfig {
     pub namespace: String,
     pub kubeconfig: kube::Config,
-    pub field_manager: String,
-    pub listener_config: ListenerConfig,
-}
-
-#[derive(Debug, Clone)]
-pub struct ListenerConfig {
-    pub label_selector_key: String,
-    pub label_selector_value: String,
+    pub owner_mark: ObjectOwnerMark,
     pub operation_timeout: Duration,
-}
-
-impl Into<Config> for &ListenerConfig {
-    fn into(self) -> Config {
-        Config {
-            label_selector: Some(format!("{}={}", self.label_selector_key, self.label_selector_value)),
-            ..Default::default()
-        }
-    }
 }
 
 pub struct KubernetesResourceManager<R>
@@ -61,8 +49,7 @@ where
     handle: tokio::task::JoinHandle<()>,
     api: Api<R>,
     namespace: String,
-    field_manager: String,
-    pub custom_labels: BTreeMap<String, String>,
+    owner_mark: ObjectOwnerMark,
 }
 
 impl<S> KubernetesResourceManager<S>
@@ -70,21 +57,19 @@ where
     S: UpdateLabels + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
     S::DynamicType: Hash + Eq + Clone + Default,
 {
-    pub fn new(
+    fn new(
         reader: Store<S>,
         handle: tokio::task::JoinHandle<()>,
         api: Api<S>,
         namespace: String,
-        field_manager: String,
-        custom_labels: BTreeMap<String, String>,
+        owner_mark: ObjectOwnerMark,
     ) -> Self {
         KubernetesResourceManager {
             reader,
             handle,
             api,
             namespace,
-            field_manager,
-            custom_labels,
+            owner_mark,
         }
     }
 
@@ -131,9 +116,27 @@ where
         }
     }
 
-    pub async fn upsert_object(&self, object_ref: &ObjectRef<S>, resource: S) -> Result<S, kube::Error> {
-        let patch = Patch::Apply(resource.update_labels(&mut self.custom_labels.clone()));
-        self.api.patch(&object_ref.name, &self.patch_params(), &patch).await
+    pub async fn upsert_object(&self, object_ref: &ObjectRef<S>, resource: S) -> Result<S, Status> {
+        let mut owner_labels: BTreeMap<String, String> = (&self.owner_mark).into();
+        let patch = Patch::Apply(resource.update_labels(&mut owner_labels));
+        let patch_result = self.api.patch(&object_ref.name, &self.patch_params(), &patch).await;
+        if let Err(kube::Error::Api(ErrorResponse { code: 409, .. })) = patch_result {
+            let object = self.api.get(&object_ref.name).await?;
+            return Err(self.generate_conflict(object_ref, &object));
+        }
+        patch_result.map_err(|e| Status::from(e))
+    }
+
+    fn generate_conflict(&self, object_ref: &ObjectRef<S>, object: &S) -> Status {
+        if self.owner_mark.is_owned::<S>(&object) {
+            debug!("Resource {:?} is owned by us", object_ref.name);
+            Conflict
+        } else {
+            debug!("Resource {:?} is owned by someone else", object_ref.name);
+            let details = OwnerConflictDetails::new(object_ref.name.clone(), object_ref.namespace.clone())
+                .with_owner(self.owner_mark.get_resource_owner::<S>(&object));
+            NotOwned(details)
+        }
     }
 
     pub async fn update(&self, name: String, new_object: &S) -> Result<S, Error> {
@@ -149,7 +152,8 @@ where
             new_object.meta().name.as_deref().unwrap_or("unknown")
         );
         let mut labels = new_object.meta().clone().labels.unwrap_or_default();
-        labels.extend(self.custom_labels.clone());
+        let owner_labels: BTreeMap<String, String> = (&self.owner_mark).into();
+        labels.extend(owner_labels);
         new_object.meta_mut().labels = Some(labels);
         debug!("Labels: {:?}", new_object.meta().labels);
 
@@ -163,16 +167,29 @@ where
         self.reader.get(object_ref)
     }
 
+    pub async fn force_get(&self, object_ref: &ObjectRef<S>) -> Result<S, Status> {
+        let object = self.api.get(&object_ref.name).await?;
+        if self.owner_mark.is_owned::<S>(&object) {
+            Ok(object)
+        } else {
+            Err(self.generate_conflict(object_ref, &object))
+        }
+    }
+
+    pub fn get_forced(&self, object_ref: &ObjectRef<S>) -> Option<Arc<S>> {
+        self.reader.get(object_ref)
+    }
+
     fn post_params(&self) -> PostParams {
         PostParams {
-            field_manager: Some(self.field_manager.clone()),
+            field_manager: Some(self.owner_mark.get_owner_name()),
             ..Default::default()
         }
     }
 
     fn patch_params(&self) -> PatchParams {
         PatchParams {
-            field_manager: Some(self.field_manager.clone()),
+            field_manager: Some(self.owner_mark.get_owner_name()),
             ..Default::default()
         }
     }
@@ -191,7 +208,7 @@ where
     {
         let client = Client::try_from(config.kubeconfig)?;
         let api: Api<S> = Api::namespaced(client.clone(), config.namespace.as_str());
-        let stream = watcher(api.clone(), (&config.listener_config).into());
+        let stream = watcher(api.clone(), (&config.owner_mark).into());
         let (reader, writer) = reflector::store();
 
         let reflector = reflector(writer, stream)
@@ -207,18 +224,12 @@ where
         let handle = tokio::spawn(reflector);
         reader.wait_until_ready().await?;
 
-        let label_selector_key = config.listener_config.label_selector_key.clone();
-        let label_selector_value = config.listener_config.label_selector_value.clone();
-        let custom_labels = btreemap! {
-            label_selector_key => label_selector_value,
-        };
         Ok(KubernetesResourceManager::new(
             reader,
             handle,
             api,
             config.namespace,
-            config.field_manager,
-            custom_labels,
+            config.owner_mark,
         ))
     }
 

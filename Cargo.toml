@@ -29,6 +29,7 @@ assert_matches = "1.5.0"
 test-context = "0.4.1"
 actix-web = "4.11.0"
 duration-string = { version = "0.5.2", features = ["serde"] }
+regex = "1.11.1"
 
 [dev-dependencies]
 serde_yml = "0.0.12"

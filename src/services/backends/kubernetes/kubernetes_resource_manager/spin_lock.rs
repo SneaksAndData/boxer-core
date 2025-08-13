@@ -6,8 +6,8 @@ use crate::services::backends::kubernetes::kubernetes_resource_watcher::Kubernet
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
 use anyhow::Error;
 use kube::runtime::reflector::ObjectRef;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -30,10 +30,7 @@ where
     }
 
     pub async fn upsert(&self, object_ref: &ObjectRef<R>, resource: R) -> Result<R, Status> {
-        self.resource_manager
-            .upsert_object(object_ref, resource)
-            .await
-            .map_err(Status::from)
+        self.resource_manager.upsert_object(object_ref, resource).await
     }
 
     pub fn get(&self, object_ref: &ObjectRef<R>) -> Result<Arc<R>, Status> {
@@ -42,6 +39,10 @@ where
             None => Err(Status::NotFound(object_ref.into())),
             Some(resource) => Ok(resource),
         }
+    }
+
+    pub async fn force_get(&self, object_ref: &ObjectRef<R>) -> Result<R, Status> {
+        self.resource_manager.force_get(&object_ref).await
     }
 
     pub async fn start<H>(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> Result<Self, Error>
