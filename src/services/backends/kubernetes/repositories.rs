@@ -1,5 +1,6 @@
 use crate::services::backends::kubernetes::kubernetes_resource_manager::spin_lock::SpinLockKubernetesResourceManager;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::status::{NotFoundDetails, Status};
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::not_found_details::NotFoundDetails;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::{
     KubernetesResourceManagerConfig, UpdateLabels,
 };
@@ -9,6 +10,8 @@ use async_trait::async_trait;
 use k8s_openapi::NamespaceResourceScope;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::runtime::reflector::ObjectRef;
+use log::debug;
+use regex::Regex;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
@@ -18,6 +21,7 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 pub mod schema_repository;
+mod tests;
 
 pub trait SoftDeleteResource:
     kube::Resource<Scope = NamespaceResourceScope> + Clone + Debug + Serialize + DeserializeOwned + Send + Sync
@@ -42,22 +46,30 @@ where
     }
 }
 
-pub trait IntoObjectRef<R>
+pub trait TryIntoObjectRef<R>
 where
     R: kube::Resource + Send + Sync + 'static,
 {
-    fn into_object_ref(self, namespace: String) -> ObjectRef<R>;
+    type Error;
+
+    fn try_into_object_ref(self, namespace: String) -> Result<ObjectRef<R>, Self::Error>;
 }
 
-impl<R> IntoObjectRef<R> for String
+impl<R> TryIntoObjectRef<R> for String
 where
     R: kube::Resource + Send + Sync + 'static,
     R::DynamicType: Default,
 {
-    fn into_object_ref(self, namespace: String) -> ObjectRef<R> {
-        let mut or = ObjectRef::new(&self);
+    type Error = anyhow::Error;
+
+    fn try_into_object_ref(self, namespace: String) -> Result<ObjectRef<R>, Self::Error> {
+        let only_dns_subdomain = Regex::new(r"[^-a-z0-9]")?;
+        let lowercase_name = self.to_lowercase();
+        let safe_name = only_dns_subdomain.replace_all(&lowercase_name, "-").to_string();
+        let trimmed_name = safe_name.trim_matches('-');
+        let mut or = ObjectRef::new(&trimmed_name);
         or.namespace = Some(namespace);
-        or
+        Ok(or)
     }
 }
 
@@ -86,7 +98,7 @@ where
     R::DynamicType: Hash + Eq + Clone + Default,
 {
     pub async fn start(config: KubernetesResourceManagerConfig) -> anyhow::Result<Self> {
-        let operation_timeout = config.listener_config.operation_timeout;
+        let operation_timeout = config.operation_timeout;
         let resource_manager = SpinLockKubernetesResourceManager::start(config, Arc::new(LoggingUpdateHandler)).await?;
         Ok(KubernetesRepository {
             resource_manager,
@@ -116,13 +128,13 @@ impl<Key, Value, Resource> ReadOnlyRepository<Key, Value> for KubernetesReposito
 where
     Resource: SoftDeleteResource + UpdateLabels,
     Resource::DynamicType: Hash + Eq + Clone + Default,
-    Key: IntoObjectRef<Resource> + Send + Sync + 'static,
+    Key: TryIntoObjectRef<Resource, Error = anyhow::Error> + Send + Sync + 'static,
     Value: TryFromResource<Resource, Error = Status> + Send + Sync + 'static,
 {
     type ReadError = Status;
 
     async fn get(&self, key: Key) -> Result<Value, Self::ReadError> {
-        let object_ref = key.into_object_ref(self.resource_manager.namespace().clone());
+        let object_ref = key.try_into_object_ref(self.resource_manager.namespace().clone())?;
         let resource = self.resource_manager.get(&object_ref);
         match resource {
             Ok(resource) => {
@@ -142,16 +154,16 @@ impl<Key, Value, Resource> CanDelete<Key, Value> for KubernetesRepository<Resour
 where
     Resource: SoftDeleteResource + UpdateLabels,
     Resource::DynamicType: Hash + Eq + Clone + Default,
-    Key: IntoObjectRef<Resource> + Send + Sync + Clone + 'static,
+    Key: TryIntoObjectRef<Resource, Error = anyhow::Error> + Send + Sync + Clone + 'static,
     Value: Send + Sync + 'static,
 {
     type DeleteError = Status;
 
     async fn delete(&self, key: Key) -> Result<(), Self::DeleteError> {
-        let object_ref = key.into_object_ref(self.resource_manager.namespace().clone());
+        let object_ref = key.try_into_object_ref(self.resource_manager.namespace().clone())?;
         let start_time = Instant::now();
         loop {
-            let resource = self.resource_manager.get(&object_ref);
+            let resource = self.resource_manager.force_get(&object_ref).await;
             if let Err(e) = resource {
                 return Err(e);
             }
@@ -161,12 +173,15 @@ where
                 if r.is_deleted() {
                     return Err(Status::Deleted(NotFoundDetails::from(&object_ref)));
                 }
-                let r = Arc::make_mut(&mut r);
                 r.set_deleted();
                 r.clear_managed_fields();
                 let upsert_result = self.resource_manager.upsert(&object_ref, r.clone()).await;
                 if let Ok(_) = upsert_result {
                     return Ok(());
+                }
+                if let Err(Status::NotOwned(details)) = upsert_result {
+                    debug!("Owner conflict: {:?}", details);
+                    return Err(Status::NotOwned(details));
                 }
             }
             self.try_delay(start_time, &object_ref, "delete").await?;
@@ -179,14 +194,14 @@ impl<Key, Value, Resource> UpsertRepository<Key, Value> for KubernetesRepository
 where
     Resource: SoftDeleteResource + UpdateLabels,
     Resource::DynamicType: Hash + Eq + Clone + Default,
-    Key: IntoObjectRef<Resource> + Send + Sync + Clone + 'static,
+    Key: TryIntoObjectRef<Resource, Error = anyhow::Error> + Send + Sync + Clone + 'static,
     Value: ToResource<Resource> + TryFromResource<Resource, Error = Status> + Send + Sync + 'static,
 {
     type Error = Status;
 
     async fn upsert(&self, key: Key, entity: Value) -> Result<(), Self::Error> {
         let start_time = Instant::now();
-        let object_ref = key.into_object_ref(self.resource_manager.namespace().clone());
+        let object_ref = key.try_into_object_ref(self.resource_manager.namespace().clone())?;
         loop {
             let resource = self.resource_manager.get(&object_ref);
 
@@ -198,6 +213,10 @@ where
                         match upsert_result {
                             Ok(_) => return Ok(()),
                             Err(Status::Conflict) => self.try_delay(start_time, &object_ref, "upsert").await?,
+                            Err(Status::NotOwned(details)) => {
+                                debug!("Owner conflict: {:?}", details);
+                                return Err(Status::NotOwned(details));
+                            }
                             Err(e) => return Err(e),
                         }
                     } else {
@@ -223,9 +242,8 @@ where
         }
     }
 
-    async fn exists(&self, key: Key) -> bool {
-        self.resource_manager
-            .get(&key.into_object_ref(self.resource_manager.namespace().clone()))
-            .is_ok()
+    async fn exists(&self, key: Key) -> Result<bool, Self::Error> {
+        let object_ref = key.try_into_object_ref(self.resource_manager.namespace().clone())?;
+        Ok(self.resource_manager.get(&object_ref).is_ok())
     }
 }

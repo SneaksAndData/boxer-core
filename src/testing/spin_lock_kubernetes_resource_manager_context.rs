@@ -1,6 +1,7 @@
+use crate::services::backends::kubernetes::kubernetes_resource_manager::object_owner_mark::ObjectOwnerMark;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::spin_lock::SpinLockKubernetesResourceManager;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::{
-    KubernetesResourceManagerConfig, ListenerConfig, UpdateLabels,
+    KubernetesResourceManagerConfig, UpdateLabels,
 };
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
 use crate::testing::api_client_context::ApiClientContext;
@@ -33,12 +34,8 @@ where
         let config = KubernetesResourceManagerConfig {
             namespace: api_context.namespace().to_string(),
             kubeconfig: api_context.config().clone(),
-            field_manager: "boxer".to_string(),
-            listener_config: ListenerConfig {
-                label_selector_key: "repository.boxer.io/test".to_string(),
-                label_selector_value: "test-label".to_string(),
-                operation_timeout: Duration::from_secs(10),
-            },
+            owner_mark: ObjectOwnerMark::new("boxer.io", "unit-tests"),
+            operation_timeout: Duration::from_secs(10),
         };
 
         let manager = SpinLockKubernetesResourceManager::start(config.clone(), Arc::new(LoggingUpdateHandler))

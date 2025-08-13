@@ -428,6 +428,7 @@ dependencies = [
  "kube",
  "log",
  "maplit",
+ "regex",
  "schemars 0.8.22",
  "serde",
  "serde_json",

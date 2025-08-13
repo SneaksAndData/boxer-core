@@ -1,5 +1,9 @@
+pub mod not_found_details;
+pub mod owner_conflict_details;
+
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::not_found_details::NotFoundDetails;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::owner_conflict_details::OwnerConflictDetails;
 use kube::core::ErrorResponse;
-use kube::runtime::reflector::ObjectRef;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
@@ -8,6 +12,7 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug)]
 pub enum Status {
     Conflict,
+    NotOwned(OwnerConflictDetails),
     Other(kube::Error),
     NotFound(NotFoundDetails),
     Deleted(NotFoundDetails),
@@ -33,10 +38,26 @@ impl From<kube::Error> for Status {
     }
 }
 
+impl From<anyhow::Error> for Status {
+    fn from(error: anyhow::Error) -> Self {
+        Status::ConversionError(error)
+    }
+}
+
 impl Display for Status {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Status::Conflict => write!(f, "Conflict error occurred"),
+            Status::NotOwned(details) => {
+                let owner = details.current_owner.as_deref().unwrap_or("unknown");
+                write!(
+                    f,
+                    "Owner conflict for resource '{}', namespace '{}'. Current owner: {}",
+                    details.object_name,
+                    details.object_namespace.as_deref().unwrap_or("unknown"),
+                    owner
+                )
+            }
             Status::Other(e) => write!(f, "An error occurred: {}", e),
             Status::NotFound(details) => write!(f, "Resource not found: {}", details),
             Status::Deleted(details) => write!(f, "Resource was deleted not found: {}", details),
@@ -47,38 +68,3 @@ impl Display for Status {
 }
 
 impl Error for Status {}
-
-#[derive(Debug)]
-pub struct NotFoundDetails {
-    pub name: String,
-    pub namespace: Option<String>,
-}
-
-impl NotFoundDetails {
-    pub fn new(name: String, namespace: Option<String>) -> Self {
-        NotFoundDetails { name, namespace }
-    }
-}
-
-impl Display for NotFoundDetails {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let namespace = self.namespace.as_deref().unwrap_or("unknown");
-        write!(
-            f,
-            "Resource name: '{}',  namespace '{}' not found",
-            self.name, namespace
-        )
-    }
-}
-
-impl<R> From<&ObjectRef<R>> for NotFoundDetails
-where
-    R: kube::Resource,
-{
-    fn from(object_ref: &ObjectRef<R>) -> Self {
-        NotFoundDetails {
-            name: object_ref.name.clone(),
-            namespace: object_ref.namespace.clone(),
-        }
-    }
-}

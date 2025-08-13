@@ -4,6 +4,7 @@ impl From<Status> for actix_web::Error {
     fn from(err: Status) -> Self {
         match err {
             Status::Conflict => actix_web::error::ErrorConflict(err.to_string()),
+            Status::NotOwned(_) => actix_web::error::ErrorConflict(err.to_string()),
             Status::NotFound(_) => actix_web::error::ErrorNotFound(err.to_string()),
             Status::Deleted(_) => actix_web::error::ErrorGone(err.to_string()),
             Status::Timeout(message) => actix_web::error::ErrorRequestTimeout(message),
