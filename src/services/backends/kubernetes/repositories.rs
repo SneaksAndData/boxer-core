@@ -5,13 +5,13 @@ use crate::services::backends::kubernetes::kubernetes_resource_manager::{
     KubernetesResourceManagerConfig, UpdateLabels,
 };
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
+use crate::services::backends::kubernetes::repositories::try_into_object_ref::TryIntoObjectRef;
 use crate::services::base::upsert_repository::{CanDelete, ReadOnlyRepository, UpsertRepository};
 use async_trait::async_trait;
 use k8s_openapi::NamespaceResourceScope;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::runtime::reflector::ObjectRef;
 use log::debug;
-use regex::Regex;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
@@ -22,6 +22,7 @@ use tokio::time::Instant;
 
 pub mod schema_repository;
 mod tests;
+mod try_into_object_ref;
 
 pub trait SoftDeleteResource:
     kube::Resource<Scope = NamespaceResourceScope> + Clone + Debug + Serialize + DeserializeOwned + Send + Sync
@@ -43,33 +44,6 @@ where
             ..Default::default()
         };
         self.to_resource(&object_meta)
-    }
-}
-
-pub trait TryIntoObjectRef<R>
-where
-    R: kube::Resource + Send + Sync + 'static,
-{
-    type Error;
-
-    fn try_into_object_ref(self, namespace: String) -> Result<ObjectRef<R>, Self::Error>;
-}
-
-impl<R> TryIntoObjectRef<R> for String
-where
-    R: kube::Resource + Send + Sync + 'static,
-    R::DynamicType: Default,
-{
-    type Error = anyhow::Error;
-
-    fn try_into_object_ref(self, namespace: String) -> Result<ObjectRef<R>, Self::Error> {
-        let only_dns_subdomain = Regex::new(r"[^-a-z0-9]")?;
-        let lowercase_name = self.to_lowercase();
-        let safe_name = only_dns_subdomain.replace_all(&lowercase_name, "-").to_string();
-        let trimmed_name = safe_name.trim_matches('-');
-        let mut or = ObjectRef::new(&trimmed_name);
-        or.namespace = Some(namespace);
-        Ok(or)
     }
 }
 
