@@ -88,10 +88,3 @@ impl InternalTokenBuilder {
         })
     }
 }
-
-impl InternalToken {
-    // Add this method to the existing implementation
-    pub fn builder() -> InternalTokenBuilder {
-        InternalTokenBuilder::new()
-    }
-}
