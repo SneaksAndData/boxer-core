@@ -22,7 +22,7 @@ use tokio::time::Instant;
 
 pub mod schema_repository;
 mod tests;
-mod try_into_object_ref;
+pub mod try_into_object_ref;
 
 pub trait SoftDeleteResource:
     kube::Resource<Scope = NamespaceResourceScope> + Clone + Debug + Serialize + DeserializeOwned + Send + Sync
