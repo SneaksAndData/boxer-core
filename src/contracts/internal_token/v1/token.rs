@@ -1,9 +1,8 @@
+use crate::contracts::internal_token::API_VERSION_KEY;
 use crate::contracts::internal_token::v1::{
     BOXER_AUDIENCE, BOXER_ISSUER, IDENTITY_PROVIDER_KEY, PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, USER_ID_KEY,
     VALIDATOR_SCHEMA_ID_KEY,
 };
-use crate::contracts::internal_token::API_VERSION_KEY;
-use base64::Engine;
 use cedar_policy::{Entity, SchemaFragment};
 use jwt::Claims;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};

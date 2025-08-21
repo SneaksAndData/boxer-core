@@ -1,4 +1,4 @@
-use crate::contracts::dynamic_claims_collection::{get_claim, DynamicClaimsCollection};
+use crate::contracts::dynamic_claims_collection::{DynamicClaimsCollection, get_claim};
 use anyhow::Result;
 
 pub mod v1;
