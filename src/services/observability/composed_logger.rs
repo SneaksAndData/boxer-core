@@ -1,4 +1,4 @@
-use log::{set_boxed_logger, set_max_level, LevelFilter, Log, SetLoggerError};
+use log::{LevelFilter, Log, SetLoggerError, set_boxed_logger, set_max_level};
 
 pub struct ComposedLogger {
     loggers: Vec<Box<dyn Log>>,
