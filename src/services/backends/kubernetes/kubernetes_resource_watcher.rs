@@ -28,3 +28,15 @@ where
 
     fn stop(&self) -> anyhow::Result<()>;
 }
+
+#[async_trait]
+pub trait KubernetesResourceWatcherRunner<H, R>: Sized
+where
+    R: Resource<Scope = NamespaceResourceScope> + Clone + Debug + Serialize + DeserializeOwned + Send + Sync,
+    R::DynamicType: Hash + Eq + Clone + Default,
+    H: ResourceUpdateHandler<R> + Send + Sync + 'static,
+{
+    async fn start(&mut self, config: KubernetesResourceManagerConfig) -> anyhow::Result<()>;
+
+    fn stop(&self) -> anyhow::Result<()>;
+}

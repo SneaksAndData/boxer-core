@@ -1,0 +1,56 @@
+pub mod tracing_facade;
+
+use opentelemetry::trace::{Status, TraceContextExt, Tracer};
+use opentelemetry::{global, Context};
+use opentelemetry_sdk::propagation::TraceContextPropagator;
+use std::fmt::Display;
+
+/// Initialize OpenTelemetry tracing with OTLP exporter
+/// Should be called once at the start of the application
+pub fn init_tracer() -> anyhow::Result<()> {
+    global::set_text_map_propagator(TraceContextPropagator::new());
+
+    let exporter = opentelemetry_otlp::SpanExporter::builder().with_tonic().build()?;
+
+    let tracer_provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
+        .with_batch_exporter(exporter)
+        .build();
+
+    global::set_tracer_provider(tracer_provider);
+    Ok(())
+}
+
+/// Start a new trace span with the given name
+/// Returns a Context containing the new span
+/// The caller is responsible for ending the span
+pub fn start_trace(span_name: &str) -> Context {
+    let tracer = global::tracer("");
+    let span = tracer
+        .span_builder(span_name.to_string())
+        .with_kind(opentelemetry::trace::SpanKind::Internal)
+        .start(&tracer);
+    Context::current().with_span(span)
+}
+
+/// Extension trait for Result to stop tracing and set span status
+pub trait ErrorExt<T, E> {
+    fn stop_trace(self, ctx: Context) -> Self;
+}
+
+/// Implementation of ErrorExt for Result
+impl<T, E> ErrorExt<T, E> for Result<T, E>
+where
+    E: Display,
+{
+    fn stop_trace(self, ctx: Context) -> Self {
+        if let Err(err) = &self {
+            ctx.span().set_status(Status::Error {
+                description: err.to_string().into(),
+            });
+        } else {
+            ctx.span().set_status(Status::Ok);
+        }
+        ctx.span().end();
+        self
+    }
+}
