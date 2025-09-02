@@ -1,3 +1,5 @@
+pub mod settings;
+
 use anyhow::Result;
 use log::Log;
 use opentelemetry_otlp::LogExporter;
