@@ -1,3 +1,5 @@
+pub mod settings;
+
 use anyhow::Context;
 use opentelemetry::global;
 use opentelemetry::metrics::Counter;

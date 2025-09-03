@@ -1,3 +1,4 @@
+pub mod settings;
 pub mod tracing_facade;
 
 use opentelemetry::trace::{Status, TraceContextExt, Tracer};

@@ -1,8 +1,9 @@
-use log::{LevelFilter, Log, SetLoggerError, set_boxed_logger, set_max_level};
+use env_filter::{Builder, Filter};
+use log::{Log, SetLoggerError, set_boxed_logger, set_max_level};
 
 pub struct ComposedLogger {
     loggers: Vec<Box<dyn Log>>,
-    global_filter: Option<LevelFilter>,
+    global_filter: Option<Filter>,
 }
 
 impl ComposedLogger {
@@ -18,13 +19,18 @@ impl ComposedLogger {
         self
     }
 
-    pub fn with_global_level(mut self, filter: LevelFilter) -> Self {
+    pub fn with_global_level(mut self, filter: Filter) -> Self {
         self.global_filter = Some(filter);
         self
     }
 
     pub fn init(self) -> Result<(), SetLoggerError> {
-        let global_filter = self.global_filter.unwrap_or(LevelFilter::Info);
+        let default_filter = Builder::default().parse("info").build();
+
+        let global_filter = match &self.global_filter {
+            Some(f) => f.filter().clone(),
+            None => default_filter.filter(),
+        };
         set_boxed_logger(Box::new(self))?;
         set_max_level(global_filter);
         Ok(())
@@ -38,8 +44,17 @@ impl Log for ComposedLogger {
 
     fn log(&self, record: &log::Record<'_>) {
         for logger in &self.loggers {
-            if logger.enabled(record.metadata()) {
-                logger.log(record);
+            match &self.global_filter {
+                Some(f) => {
+                    if f.matches(record) {
+                        logger.log(record)
+                    }
+                }
+                None => {
+                    if logger.enabled(record.metadata()) {
+                        logger.log(record)
+                    }
+                }
             }
         }
     }
