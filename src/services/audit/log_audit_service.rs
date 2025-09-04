@@ -1,7 +1,7 @@
+use crate::services::audit::AuditService;
 use crate::services::audit::authorization_audit_event::AuthorizationAuditEvent;
 use crate::services::audit::resource_delete_audit_event::ResourceDeleteAuditEvent;
 use crate::services::audit::resource_modification_audit_event::ResourceModificationAuditEvent;
-use crate::services::audit::AuditService;
 use anyhow::Result;
 
 pub struct LogAuditService;
