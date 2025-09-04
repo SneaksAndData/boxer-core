@@ -33,10 +33,10 @@ where
 {
     type Error = anyhow::Error;
 
-    async fn upsert(&self, key: Key, entity: Entity) -> Result<(), Self::Error> {
+    async fn upsert(&self, key: Key, entity: Entity) -> Result<Entity, Self::Error> {
         let mut write_guard = self.write().await;
-        (*write_guard).insert(key, entity);
-        Ok(())
+        (*write_guard).insert(key, entity.clone());
+        Ok(entity)
     }
 
     async fn exists(&self, key: Key) -> Result<bool, Self::Error> {
