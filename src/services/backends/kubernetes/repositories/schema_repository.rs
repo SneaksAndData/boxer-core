@@ -7,6 +7,7 @@ mod test_reduced_schema;
 #[cfg(test)]
 mod test_schema;
 
+use crate::services::audit::audit_facade::to_audit_record::ToAuditRecord;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
 use crate::services::backends::kubernetes::repositories::schema_repository::schema_document::{
     SchemaDocument, SchemaDocumentSpec,
@@ -39,6 +40,13 @@ impl TryFromResource<SchemaDocument> for SchemaFragment {
         let spec = resource.spec.clone();
         spec.try_into()
             .map_err(|e| Status::ConversionError(anyhow::Error::from(e)))
+    }
+}
+
+impl ToAuditRecord for SchemaFragment {
+    fn to_audit_record(&self) -> String {
+        self.to_json_string()
+            .unwrap_or_else(|_| "<failed to serialize schema fragment>".to_string())
     }
 }
 

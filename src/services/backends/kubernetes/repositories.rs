@@ -173,7 +173,7 @@ where
 {
     type Error = Status;
 
-    async fn upsert(&self, key: Key, entity: Value) -> Result<(), Self::Error> {
+    async fn upsert(&self, key: Key, entity: Value) -> Result<Value, Self::Error> {
         let start_time = Instant::now();
         let object_ref = key.try_into_object_ref(self.resource_manager.namespace().clone())?;
         loop {
@@ -185,7 +185,7 @@ where
                         let new = entity.to_resource_default(&object_ref)?;
                         let upsert_result = self.resource_manager.upsert(&object_ref, new).await;
                         match upsert_result {
-                            Ok(_) => return Ok(()),
+                            Ok(_) => return Ok(entity),
                             Err(Status::Conflict) => self.try_delay(start_time, &object_ref, "upsert").await?,
                             Err(Status::NotOwned(details)) => {
                                 debug!("Owner conflict: {:?}", details);
@@ -206,7 +206,7 @@ where
                     let new = entity.to_resource(&meta_mut)?;
                     let upsert_result = self.resource_manager.upsert(&object_ref, new).await;
                     match upsert_result {
-                        Ok(_) => return Ok(()),
+                        Ok(_) => return Ok(entity),
                         Err(Status::Conflict) => self.try_delay(start_time, &object_ref, "upsert").await?,
                         Err(e) => return Err(e),
                     }

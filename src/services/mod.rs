@@ -1,3 +1,4 @@
+pub mod audit;
 pub mod backends;
 pub mod base;
 pub mod observability;

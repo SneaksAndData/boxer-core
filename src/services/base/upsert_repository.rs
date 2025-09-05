@@ -6,7 +6,7 @@ pub trait UpsertRepository<Key, Entity>: ReadOnlyRepository<Key, Entity> + Send 
     type Error;
 
     /// Updates or inserts a policy by id
-    async fn upsert(&self, key: Key, entity: Entity) -> Result<(), Self::Error>;
+    async fn upsert(&self, key: Key, entity: Entity) -> Result<Entity, Self::Error>;
 
     /// Checks if an object exists
     async fn exists(&self, key: Key) -> Result<bool, Self::Error>;
