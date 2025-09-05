@@ -1,7 +1,10 @@
+use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
+use crate::services::audit::events::resource_delete_audit_event::ResourceDeleteAuditEvent;
+use crate::services::audit::events::resource_modification_audit_event::{
+    ModificationResult, ResourceModificationAuditEvent,
+};
+use crate::services::audit::events::token_validation_event::TokenValidationEvent;
 use crate::services::audit::AuditService;
-use crate::services::audit::authorization_audit_event::AuthorizationAuditEvent;
-use crate::services::audit::resource_delete_audit_event::ResourceDeleteAuditEvent;
-use crate::services::audit::resource_modification_audit_event::ResourceModificationAuditEvent;
 use anyhow::Result;
 
 pub struct LogAuditService;
@@ -49,17 +52,47 @@ impl AuditService for LogAuditService {
     }
 
     fn record_resource_modification(&self, event: ResourceModificationAuditEvent) -> Result<()> {
-        log::info!(
+        if let ModificationResult::Success(result) = &event.modification_result {
+            log::info!(
             // Indicates the audit events for easier filtering in log aggregation systems
             log_type = "audit",
 
             // The event decomposition for structured logging
             id = event.id.as_str(),
             resource_type = event.resource_type.as_str(),
-            successfull:serde = event.modification_result;
+            successfull = result;
 
             // The log message
             "Boxer resource modified: {:?}/{:?}", event.resource_type, event.id);
+        } else {
+            log::info!(
+            // Indicates the audit events for easier filtering in log aggregation systems
+            log_type = "audit",
+
+            // The event decomposition for structured logging
+            id = event.id.as_str(),
+            resource_type = event.resource_type.as_str(),
+            failure:serde = event.modification_result;
+
+            // The log message
+            "Boxer resource modified: {:?}/{:?}", event.resource_type, event.id);
+        }
+
+        Ok(())
+    }
+
+    fn record_token_validation(&self, event: TokenValidationEvent) -> Result<()> {
+        log::info!(
+            // Indicates the audit events for easier filtering in log aggregation systems
+            log_type = "audit",
+
+            // The event decomposition for structured logging
+            id = event.token_id.as_str(),
+            result:debug = event.result,
+            token_type = event.token_type.as_str();
+
+            // The log message
+            "Boxer token validation: {:?}/{:?}", event.token_type, event.token_id);
 
         Ok(())
     }
