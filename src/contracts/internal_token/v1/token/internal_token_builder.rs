@@ -78,7 +78,7 @@ impl InternalTokenBuilder {
             principal,
             schema,
             metadata: TokenMetadata {
-                user_id,
+                external_identity: user_id,
                 identity_provider,
             },
             version: self.version,
