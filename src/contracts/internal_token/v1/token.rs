@@ -4,8 +4,8 @@ use crate::contracts::internal_token::v1::{
     VALIDATOR_SCHEMA_ID_KEY,
 };
 use cedar_policy::{Entity, SchemaFragment};
-use jwt::Claims;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use josekit::jwt::JwtPayload;
+use std::time::{Duration, SystemTime};
 
 pub mod internal_token_builder;
 
@@ -20,7 +20,7 @@ pub struct InternalToken {
 }
 
 pub struct TokenMetadata {
-    pub user_id: String,
+    pub external_identity: String,
     pub identity_provider: String,
 }
 
@@ -38,7 +38,7 @@ impl InternalToken {
             principal,
             schema,
             metadata: TokenMetadata {
-                user_id,
+                external_identity: user_id,
                 identity_provider: external_identity_provider,
             },
             version: "v1".to_string(),
@@ -49,35 +49,24 @@ impl InternalToken {
     }
 }
 
-impl TryInto<Claims> for InternalToken {
+impl TryInto<JwtPayload> for InternalToken {
     type Error = anyhow::Error;
 
-    fn try_into(self) -> Result<Claims, Self::Error> {
-        let mut claims: Claims = Default::default();
-        claims.private.insert(API_VERSION_KEY.to_string(), self.version.into());
-        claims
-            .private
-            .insert(PRINCIPAL_KEY.to_string(), self.principal.to_json_value()?);
-        claims
-            .private
-            .insert(SCHEMA_KEY.to_string(), self.schema.to_json_value()?);
-        claims
-            .private
-            .insert(USER_ID_KEY.to_string(), self.metadata.user_id.into());
-        claims.private.insert(
-            IDENTITY_PROVIDER_KEY.to_string(),
-            self.metadata.identity_provider.into(),
-        );
-        claims.private.insert(SCHEMA_ID_KEY.to_string(), self.schema_id.into());
-        claims
-            .private
-            .insert(VALIDATOR_SCHEMA_ID_KEY.to_string(), self.validator_schema_id.into());
+    fn try_into(self) -> Result<JwtPayload, Self::Error> {
+        let mut claims: JwtPayload = Default::default();
+        claims.set_claim(API_VERSION_KEY, Some(self.version.into()))?;
+        claims.set_claim(PRINCIPAL_KEY, Some(self.principal.to_json_value()?))?;
+        claims.set_claim(SCHEMA_KEY, Some(self.schema.to_json_value()?))?;
+        claims.set_claim(USER_ID_KEY, Some(self.metadata.external_identity.into()))?;
+        claims.set_claim(IDENTITY_PROVIDER_KEY, Some(self.metadata.identity_provider.into()))?;
+        claims.set_claim(SCHEMA_ID_KEY, Some(self.schema_id.into()))?;
+        claims.set_claim(VALIDATOR_SCHEMA_ID_KEY, Some(self.validator_schema_id.into()))?;
 
-        claims.registered.issuer = Some(BOXER_ISSUER.to_string());
-        claims.registered.audience = Some(BOXER_AUDIENCE.to_string());
+        claims.set_issuer(BOXER_ISSUER.to_string());
+        claims.set_audience(vec![BOXER_AUDIENCE.to_string()]);
 
         let one_hour = SystemTime::now() + self.validity_period;
-        claims.registered.expiration = Some(one_hour.duration_since(UNIX_EPOCH)?.as_secs());
+        claims.set_expires_at(&one_hour);
         Ok(claims)
     }
 }
