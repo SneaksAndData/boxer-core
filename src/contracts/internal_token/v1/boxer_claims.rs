@@ -1,4 +1,4 @@
-use crate::contracts::dynamic_claims_collection::{get_claim, get_value, DynamicClaimsCollection};
+use crate::contracts::dynamic_claims_collection::{DynamicClaimsCollection, get_claim, get_value};
 use crate::contracts::internal_token::v1::{PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, VALIDATOR_SCHEMA_ID_KEY};
 use cedar_policy::{Entity, SchemaFragment};
 

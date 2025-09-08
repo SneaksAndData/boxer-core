@@ -1,8 +1,8 @@
+use crate::contracts::internal_token::API_VERSION_KEY;
 use crate::contracts::internal_token::v1::{
     BOXER_AUDIENCE, BOXER_ISSUER, IDENTITY_PROVIDER_KEY, PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, USER_ID_KEY,
     VALIDATOR_SCHEMA_ID_KEY,
 };
-use crate::contracts::internal_token::API_VERSION_KEY;
 use cedar_policy::{Entity, SchemaFragment};
 use josekit::jwt::JwtPayload;
 use std::time::{Duration, SystemTime};
