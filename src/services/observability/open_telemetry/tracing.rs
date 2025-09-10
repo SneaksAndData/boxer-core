@@ -2,7 +2,7 @@ pub mod settings;
 pub mod tracing_facade;
 
 use opentelemetry::trace::{Status, TraceContextExt, Tracer};
-use opentelemetry::{Context, global};
+use opentelemetry::{global, Context};
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use std::fmt::Display;
 
@@ -24,8 +24,8 @@ pub fn init_tracer() -> anyhow::Result<()> {
 /// Start a new trace span with the given name
 /// Returns a Context containing the new span
 /// The caller is responsible for ending the span
-pub fn start_trace(span_name: &str) -> Context {
-    let tracer = global::tracer("");
+pub fn start_trace(span_name: &str, tracer_name: Option<String>) -> Context {
+    let tracer = global::tracer(tracer_name.unwrap_or("boxer".to_string()));
     let span = tracer
         .span_builder(span_name.to_string())
         .with_kind(opentelemetry::trace::SpanKind::Internal)
