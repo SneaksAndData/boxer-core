@@ -1,5 +1,5 @@
 use crate::services::base::upsert_repository::ReadOnlyRepository;
-use crate::services::observability::open_telemetry::tracing::{start_trace, ErrorExt};
+use crate::services::observability::open_telemetry::tracing::{ErrorExt, start_trace};
 use async_trait::async_trait;
 use opentelemetry::context::FutureExt;
 use std::marker::PhantomData;
