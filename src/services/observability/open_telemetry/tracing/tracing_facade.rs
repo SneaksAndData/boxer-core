@@ -53,7 +53,7 @@ where
     type ReadError = anyhow::Error;
 
     async fn get(&self, key: Key) -> Result<Value, Self::ReadError> {
-        let cx = start_trace(&self.span_name);
+        let cx = start_trace(&self.span_name, None);
         self.underlying.get(key).with_context(cx.clone()).await.stop_trace(cx)
     }
 }
