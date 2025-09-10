@@ -1,5 +1,5 @@
 use crate::services::base::upsert_repository::ReadOnlyRepository;
-use crate::services::observability::open_telemetry::tracing::{ErrorExt, start_trace};
+use crate::services::observability::open_telemetry::tracing::{start_trace, ErrorExt};
 use async_trait::async_trait;
 use opentelemetry::context::FutureExt;
 use std::marker::PhantomData;
@@ -53,7 +53,7 @@ where
     type ReadError = anyhow::Error;
 
     async fn get(&self, key: Key) -> Result<Value, Self::ReadError> {
-        let cx = start_trace(&self.span_name);
+        let cx = start_trace(&self.span_name, None);
         self.underlying.get(key).with_context(cx.clone()).await.stop_trace(cx)
     }
 }
