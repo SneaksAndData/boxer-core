@@ -4,8 +4,8 @@ use anyhow::Result;
 use log::Log;
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::LogExporter;
-use opentelemetry_sdk::logs::SdkLoggerProvider;
 use opentelemetry_sdk::Resource;
+use opentelemetry_sdk::logs::SdkLoggerProvider;
 
 pub fn init_logger(environment: String) -> Result<Box<dyn Log>> {
     let exporter = LogExporter::builder().with_tonic().build()?;
