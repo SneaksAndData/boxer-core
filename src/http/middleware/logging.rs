@@ -1,8 +1,8 @@
+use actix_web::Error;
 use actix_web::body::MessageBody;
 use actix_web::dev::ServiceRequest;
 use actix_web::dev::{Service, ServiceResponse};
 use actix_web::middleware::Next;
-use actix_web::Error;
 use log::warn;
 
 pub async fn custom_error_logging(
