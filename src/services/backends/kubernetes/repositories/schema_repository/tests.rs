@@ -130,7 +130,14 @@ async fn test_delete_schema(ctx: &mut KubernetesSchemaRepositoryTest) {
     let after = ctx.repository.get(name.to_string()).await;
 
     // Assert
-    assert_matches!(after.unwrap_err(), Deleted(NotFoundDetails { name: _, namespace: _ }));
+    assert_matches!(
+        after.unwrap_err(),
+        Deleted(NotFoundDetails {
+            name: _,
+            namespace: _,
+            resource_type: rt,
+        }) if rt == "SchemaDocument"
+    );
 }
 
 #[test_context(KubernetesSchemaRepositoryTest)]
