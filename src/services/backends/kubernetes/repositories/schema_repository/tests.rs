@@ -1,20 +1,20 @@
 use super::*;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status::{Deleted, NotOwned};
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::not_found_details::NotFoundDetails;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::owner_conflict_details::OwnerConflictDetails;
-use crate::services::backends::kubernetes::repositories::TryIntoObjectRef;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status::{Deleted, NotOwned};
 use crate::services::backends::kubernetes::repositories::schema_repository::test_reduced_schema::reduced_schema;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_schema::schema;
+use crate::services::backends::kubernetes::repositories::TryIntoObjectRef;
 use crate::testing::api_extensions::{WaitForDelete, WaitForResource};
 use crate::testing::spin_lock_kubernetes_resource_manager_context::SpinLockKubernetesResourceManagerTestContext;
 use assert_matches::assert_matches;
-use kube::Api;
 use kube::api::PostParams;
 use kube::runtime::reflector::ObjectRef;
+use kube::Api;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::time::Duration;
-use test_context::{AsyncTestContext, test_context};
+use test_context::{test_context, AsyncTestContext};
 
 const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -130,7 +130,14 @@ async fn test_delete_schema(ctx: &mut KubernetesSchemaRepositoryTest) {
     let after = ctx.repository.get(name.to_string()).await;
 
     // Assert
-    assert_matches!(after.unwrap_err(), Deleted(NotFoundDetails { name: _, namespace: _ }));
+    assert_matches!(
+        after.unwrap_err(),
+        Deleted(NotFoundDetails {
+            name: _,
+            namespace: _,
+            resource_type: rt,
+        }) if rt == "SchemaDocument"
+    );
 }
 
 #[test_context(KubernetesSchemaRepositoryTest)]
