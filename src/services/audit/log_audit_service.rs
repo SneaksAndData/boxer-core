@@ -1,10 +1,10 @@
-use crate::services::audit::AuditService;
 use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
 use crate::services::audit::events::resource_delete_audit_event::ResourceDeleteAuditEvent;
 use crate::services::audit::events::resource_modification_audit_event::{
     ModificationResult, ResourceModificationAuditEvent,
 };
 use crate::services::audit::events::token_validation_event::TokenValidationEvent;
+use crate::services::audit::AuditService;
 use anyhow::Result;
 
 pub struct LogAuditService;
@@ -25,7 +25,7 @@ impl AuditService for LogAuditService {
             action = event.action.as_str(),
             actor = event.actor.as_str(),
             resource = event.resource.as_str(),
-            decision:serde = event.decision,
+            result:serde = event.decision,
             reason_policies:serde = event.reason.policies,
             reason_errors:serde = event.reason.errors;
 
