@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use kube::Config;
 use kube::config::Kubeconfig;
 use log::{debug, info};
-use serde_yml::from_str;
+use serde_norway::from_str;
 use std::process::Command;
 use std::sync::Arc;
 

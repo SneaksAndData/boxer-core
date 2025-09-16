@@ -25,7 +25,7 @@ pub async fn get_kubeconfig() -> anyhow::Result<Config> {
     }
     let kubeconfig_string = String::from_utf8(output.stdout)?;
     info!("Kubeconfig used by the tests:\n{}", kubeconfig_string);
-    let kubeconfig: Kubeconfig = serde_yml::from_str(&kubeconfig_string)?;
+    let kubeconfig: Kubeconfig = serde_norway::from_str(&kubeconfig_string)?;
     let config = Config::from_custom_kubeconfig(kubeconfig, &Default::default()).await?;
     Ok(config)
 }
