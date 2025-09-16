@@ -25,7 +25,7 @@ impl AuditService for LogAuditService {
             action = event.action.as_str(),
             actor = event.actor.as_str(),
             resource = event.resource.as_str(),
-            decision:serde = event.decision,
+            result:serde = event.decision,
             reason_policies:serde = event.reason.policies,
             reason_errors:serde = event.reason.errors;
 
