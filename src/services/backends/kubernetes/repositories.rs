@@ -1,6 +1,6 @@
 use crate::services::backends::kubernetes::kubernetes_resource_manager::spin_lock::SpinLockKubernetesResourceManager;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::not_found_details::NotFoundDetails;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::{
     KubernetesResourceManagerConfig, UpdateLabels,
 };
@@ -8,12 +8,12 @@ use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdate
 use crate::services::backends::kubernetes::repositories::try_into_object_ref::TryIntoObjectRef;
 use crate::services::base::upsert_repository::{CanDelete, ReadOnlyRepository, UpsertRepository};
 use async_trait::async_trait;
-use k8s_openapi::NamespaceResourceScope;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+use k8s_openapi::NamespaceResourceScope;
 use kube::runtime::reflector::ObjectRef;
 use log::debug;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -52,7 +52,7 @@ where
     R: kube::Resource + Send + Sync + 'static,
 {
     type Error;
-    fn try_into_resource(resource: Arc<R>) -> Result<Self, Self::Error>
+    fn try_from_resource(resource: Arc<R>) -> Result<Self, Self::Error>
     where
         Self: Sized;
 }
@@ -115,7 +115,7 @@ where
                 if resource.is_deleted() {
                     return Err(Status::Deleted(NotFoundDetails::from(&object_ref)));
                 }
-                let value: Value = Value::try_into_resource(resource.clone())?;
+                let value: Value = Value::try_from_resource(resource.clone())?;
                 Ok(value)
             }
             Err(other) => Err(other),
