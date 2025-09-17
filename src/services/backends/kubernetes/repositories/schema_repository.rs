@@ -20,9 +20,13 @@ use std::sync::Arc;
 
 impl ToResource<SchemaDocument> for SchemaFragment {
     fn to_resource(&self, object_meta: &ObjectMeta) -> Result<SchemaDocument, Status> {
-        let serialized = self
-            .to_json_string()
+        let value = self
+            .clone()
+            .to_json_value()
             .map_err(|e| Status::ConversionError(anyhow::Error::from(e)))?;
+
+        let serialized =
+            serde_json::to_string_pretty(&value).map_err(|e| Status::ConversionError(anyhow::Error::from(e)))?;
         Ok(SchemaDocument {
             metadata: object_meta.clone(),
             spec: SchemaDocumentSpec {
@@ -36,7 +40,7 @@ impl ToResource<SchemaDocument> for SchemaFragment {
 impl TryFromResource<SchemaDocument> for SchemaFragment {
     type Error = Status;
 
-    fn try_into_resource(resource: Arc<SchemaDocument>) -> Result<Self, Self::Error> {
+    fn try_from_resource(resource: Arc<SchemaDocument>) -> Result<Self, Self::Error> {
         let spec = resource.spec.clone();
         spec.try_into()
             .map_err(|e| Status::ConversionError(anyhow::Error::from(e)))
