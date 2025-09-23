@@ -7,18 +7,18 @@ pub struct TokenValidationEvent {
 }
 
 impl TokenValidationEvent {
-    pub fn internal(token_id: String, result: TokenValidationResult) -> Self {
+    pub fn internal(token_id: String, is_successful: bool, details: String) -> Self {
         Self {
             token_id,
-            result,
+            result: make_result(is_successful, details, "internal".to_string()),
             token_type: "internal".to_string(),
         }
     }
 
-    pub fn external(token_id: String, result: TokenValidationResult) -> Self {
+    pub fn external(token_id: String, is_successful: bool, details: String) -> Self {
         Self {
             token_id,
-            result,
+            result: make_result(is_successful, details, "external".to_string()),
             token_type: "external".to_string(),
         }
     }
@@ -29,4 +29,12 @@ impl TokenValidationEvent {
 pub enum TokenValidationResult {
     Allow(String),
     Deny(String),
+}
+
+fn make_result(is_successful: bool, details: String, token_type: String) -> TokenValidationResult {
+    if is_successful {
+        TokenValidationResult::Allow(token_type)
+    } else {
+        TokenValidationResult::Deny(details)
+    }
 }
