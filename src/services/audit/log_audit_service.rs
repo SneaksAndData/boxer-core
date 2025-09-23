@@ -88,8 +88,9 @@ impl AuditService for LogAuditService {
 
             // The event decomposition for structured logging
             id = event.token_id.as_str(),
-            result:debug = event.result,
-            token_type = event.token_type.as_str();
+            result:serde = event.result,
+            token_type = event.token_type.as_str(),
+            reason_errors:serde = event.reason_errors;
 
             // The log message
             "Boxer token validation: {:?}/{:?}", event.token_type, event.token_id);
