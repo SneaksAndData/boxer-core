@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 pub struct TokenValidationEvent {
     pub token_id: String,
     pub result: TokenValidationResult,
@@ -22,8 +24,9 @@ impl TokenValidationEvent {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum TokenValidationResult {
-    Success,
-    Failure(String),
+    Allow(String),
+    Deny(String),
 }

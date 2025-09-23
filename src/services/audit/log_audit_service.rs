@@ -1,10 +1,10 @@
-use crate::services::audit::AuditService;
 use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
 use crate::services::audit::events::resource_delete_audit_event::ResourceDeleteAuditEvent;
 use crate::services::audit::events::resource_modification_audit_event::{
     ModificationResult, ResourceModificationAuditEvent,
 };
 use crate::services::audit::events::token_validation_event::TokenValidationEvent;
+use crate::services::audit::AuditService;
 use anyhow::Result;
 
 pub struct LogAuditService;
@@ -88,7 +88,7 @@ impl AuditService for LogAuditService {
 
             // The event decomposition for structured logging
             id = event.token_id.as_str(),
-            result:debug = event.result,
+            result:serde = event.result,
             token_type = event.token_type.as_str();
 
             // The log message
