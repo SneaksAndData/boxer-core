@@ -52,7 +52,7 @@ where
     R: kube::Resource + Send + Sync + 'static,
 {
     type Error;
-    fn try_into_resource(resource: Arc<R>) -> Result<Self, Self::Error>
+    fn try_from_resource(resource: Arc<R>) -> Result<Self, Self::Error>
     where
         Self: Sized;
 }
@@ -115,7 +115,7 @@ where
                 if resource.is_deleted() {
                     return Err(Status::Deleted(NotFoundDetails::from(&object_ref)));
                 }
-                let value: Value = Value::try_into_resource(resource.clone())?;
+                let value: Value = Value::try_from_resource(resource.clone())?;
                 Ok(value)
             }
             Err(other) => Err(other),
