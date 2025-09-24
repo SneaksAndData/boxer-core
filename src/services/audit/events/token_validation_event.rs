@@ -9,18 +9,29 @@ pub struct TokenValidationEvent {
 }
 
 impl TokenValidationEvent {
-    pub fn internal(token_id: String, is_successful: bool, details: HashSet<String>) -> Self {
+    pub fn internal(token: &String, is_successful: bool, details: HashSet<String>) -> Self {
+        let token_hash = md5::compute(token);
         Self {
-            token_id,
+            token_id: format!("md5:{:x}", token_hash),
             result: make_result(is_successful),
             reason_errors: details,
             token_type: "internal".to_string(),
         }
     }
 
-    pub fn external(token_id: String, is_successful: bool, details: HashSet<String>) -> Self {
+    pub fn external(token: &String, is_successful: bool, details: HashSet<String>) -> Self {
+        let token_hash = md5::compute(token);
         Self {
-            token_id,
+            token_id: format!("md5:{:x}", token_hash),
+            result: make_result(is_successful),
+            reason_errors: details,
+            token_type: "external".to_string(),
+        }
+    }
+
+    pub fn external_empty(is_successful: bool, details: HashSet<String>) -> Self {
+        Self {
+            token_id: "token-not-provided".to_string(),
             result: make_result(is_successful),
             reason_errors: details,
             token_type: "external".to_string(),
