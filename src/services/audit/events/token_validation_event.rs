@@ -9,7 +9,7 @@ pub struct TokenValidationEvent {
 }
 
 impl TokenValidationEvent {
-    pub fn internal(token: &String, is_successful: bool, details: HashSet<String>) -> Self {
+    pub fn internal(token: &str, is_successful: bool, details: HashSet<String>) -> Self {
         let token_hash = md5::compute(token);
         Self {
             token_id: format!("md5:{:x}", token_hash),
@@ -19,7 +19,7 @@ impl TokenValidationEvent {
         }
     }
 
-    pub fn external(token: &String, is_successful: bool, details: HashSet<String>) -> Self {
+    pub fn external(token: &str, is_successful: bool, details: HashSet<String>) -> Self {
         let token_hash = md5::compute(token);
         Self {
             token_id: format!("md5:{:x}", token_hash),
