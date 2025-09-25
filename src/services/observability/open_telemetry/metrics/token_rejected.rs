@@ -1,7 +1,7 @@
 use crate::services::observability::open_telemetry::metrics::authorization_metric::AuthorizationMetric;
 use crate::services::observability::open_telemetry::metrics::into_metric_tag::IntoMetricTag;
 use opentelemetry::metrics::Counter;
-use opentelemetry::{global, KeyValue};
+use opentelemetry::{KeyValue, global};
 
 #[derive(Clone)]
 pub struct TokenRejected(Counter<u64>, String);
