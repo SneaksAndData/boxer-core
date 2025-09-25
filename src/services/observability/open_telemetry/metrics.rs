@@ -19,11 +19,33 @@ pub fn init_metrics() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn token_succeeded(app_name: &'static str) -> Counter<u64> {
-    let meter = global::meter(app_name);
-    meter
-        .u64_counter(format!("{}.{}", app_name, "token_succeeded"))
-        .with_description("Count of successfully processed tokens")
-        .with_unit("tokens")
-        .build()
+pub struct TokenIssuanceCounter(Counter<u64>);
+
+impl TokenIssuanceCounter {
+    pub fn new(app_name: &'static str) -> TokenIssuanceCounter {
+        let meter = global::meter(app_name);
+        Self(
+            meter
+                .u64_counter(format!("{}.{}", app_name, "token_succeeded"))
+                .with_description("Count of successfully processed tokens")
+                .with_unit("tokens")
+                .build(),
+        )
+    }
+}
+
+pub trait TokenIssuanceMetric {
+    fn increment(&self, external_identity: String, identity_provider: String);
+}
+
+impl TokenIssuanceMetric for TokenIssuanceCounter {
+    fn increment(&self, external_identity: String, identity_provider: String) {
+        self.0.add(
+            1,
+            &[
+                opentelemetry::KeyValue::new("external_identity", external_identity),
+                opentelemetry::KeyValue::new("identity_provider", identity_provider),
+            ],
+        );
+    }
 }
