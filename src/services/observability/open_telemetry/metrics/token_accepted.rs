@@ -1,5 +1,5 @@
-use crate::services::observability::open_telemetry::metrics::into_metrig_tag::IntoMetricTag;
-use cedar_policy::EntityUid;
+use crate::services::observability::open_telemetry::metrics::authorization_metric::AuthorizationMetric;
+use crate::services::observability::open_telemetry::metrics::into_metric_tag::IntoMetricTag;
 use opentelemetry::metrics::Counter;
 use opentelemetry::{global, KeyValue};
 
@@ -18,15 +18,7 @@ impl TokenAccepted {
     }
 }
 
-pub trait TokenAcceptedMetric {
-    fn increment<T, E, F>(&self, principal: T, action: E, resource: F)
-    where
-        T: IntoMetricTag,
-        E: IntoMetricTag,
-        F: IntoMetricTag;
-}
-
-impl TokenAcceptedMetric for TokenAccepted {
+impl AuthorizationMetric for TokenAccepted {
     fn increment<T, E, F>(&self, principal: T, action: E, resource: F)
     where
         T: IntoMetricTag,
@@ -42,11 +34,5 @@ impl TokenAcceptedMetric for TokenAccepted {
                 KeyValue::new("instance_id", self.1.clone()),
             ],
         );
-    }
-}
-
-impl IntoMetricTag for EntityUid {
-    fn into_metric_tag(self) -> String {
-        format!("{}.{}", self.type_name(), self.id().unescaped())
     }
 }

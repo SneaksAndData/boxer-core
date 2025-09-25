@@ -1,4 +1,5 @@
-mod into_metrig_tag;
+mod authorization_metric;
+mod into_metric_tag;
 pub mod provider;
 pub mod settings;
 pub mod token_accepted;

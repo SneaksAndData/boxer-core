@@ -1,4 +1,5 @@
-use cedar_policy::EntityUid;
+use crate::services::observability::open_telemetry::metrics::authorization_metric::AuthorizationMetric;
+use crate::services::observability::open_telemetry::metrics::into_metric_tag::IntoMetricTag;
 use opentelemetry::metrics::Counter;
 use opentelemetry::{global, KeyValue};
 
@@ -17,20 +18,19 @@ impl TokenRejected {
     }
 }
 
-pub trait TokenRejectedMetric {
-    fn increment(&self, principal: EntityUid, action: EntityUid, resource: EntityUid);
-}
-
-impl TokenRejectedMetric for TokenRejected {
-    fn increment(&self, principal: EntityUid, action: EntityUid, resource: EntityUid) {
-        self.0.add(
-            1,
-            &[
-                KeyValue::new("principal", principal.to_string()),
-                KeyValue::new("action", action.to_string()),
-                KeyValue::new("resource", resource.to_string()),
-                KeyValue::new("instance_id", self.1.clone()),
-            ],
-        );
+impl AuthorizationMetric for TokenRejected {
+    fn increment<T, E, F>(&self, principal: T, action: E, resource: F)
+    where
+        T: IntoMetricTag,
+        E: IntoMetricTag,
+        F: IntoMetricTag,
+    {
+        let mut tags = vec![
+            KeyValue::new("principal", principal.into_metric_tag()),
+            KeyValue::new("action", action.into_metric_tag()),
+            KeyValue::new("resource", resource.into_metric_tag()),
+        ];
+        tags.push(KeyValue::new("instance_id", self.1.clone()));
+        self.0.add(1, &tags);
     }
 }
