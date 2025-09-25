@@ -26,8 +26,8 @@ impl TokenIssuanceCounter {
         let meter = global::meter(app_name);
         Self(
             meter
-                .u64_counter(format!("{}.{}", app_name, "token_succeeded"))
-                .with_description("Count of successfully processed tokens")
+                .u64_counter(format!("{}.{}", app_name, "token_issued"))
+                .with_description("Count of successfully issued tokens")
                 .with_unit("tokens")
                 .build(),
         )
@@ -35,11 +35,11 @@ impl TokenIssuanceCounter {
 }
 
 pub trait TokenIssuanceMetric {
-    fn increment(&self, external_identity: String, identity_provider: String);
+    fn increment(&self, identity_provider: String, external_identity: String);
 }
 
 impl TokenIssuanceMetric for TokenIssuanceCounter {
-    fn increment(&self, external_identity: String, identity_provider: String) {
+    fn increment(&self, identity_provider: String, external_identity: String) {
         self.0.add(
             1,
             &[
