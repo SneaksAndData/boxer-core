@@ -3,6 +3,7 @@ use crate::services::observability::open_telemetry::metrics::token_attempt::Toke
 use crate::services::observability::open_telemetry::metrics::token_forbidden::TokenForbidden;
 use crate::services::observability::open_telemetry::metrics::token_issued::TokenIssued;
 use crate::services::observability::open_telemetry::metrics::token_lifetime::TokenLifetime;
+use crate::services::observability::open_telemetry::metrics::token_rejected::TokenRejected;
 use crate::services::observability::open_telemetry::metrics::token_unauthorized::TokenUnauthorized;
 use crate::services::service_provider::ServiceProvider;
 
@@ -13,6 +14,7 @@ pub struct MetricsProvider {
     token_attempt: TokenAttempt,
     token_lifetime: TokenLifetime,
     token_accepted: TokenAccepted,
+    token_rejected: TokenRejected,
 }
 
 impl MetricsProvider {
@@ -23,7 +25,8 @@ impl MetricsProvider {
             token_issued: TokenIssued::new(root_metrics_namespace, instance_id.clone()),
             token_attempt: TokenAttempt::new(root_metrics_namespace, instance_id.clone()),
             token_lifetime: TokenLifetime::new(root_metrics_namespace, instance_id.clone()),
-            token_accepted: TokenAccepted::new(root_metrics_namespace, instance_id),
+            token_accepted: TokenAccepted::new(root_metrics_namespace, instance_id.clone()),
+            token_rejected: TokenRejected::new(root_metrics_namespace, instance_id),
         }
     }
 }
@@ -61,5 +64,11 @@ impl ServiceProvider<TokenLifetime> for MetricsProvider {
 impl ServiceProvider<TokenAccepted> for MetricsProvider {
     fn get(&self) -> TokenAccepted {
         self.token_accepted.clone()
+    }
+}
+
+impl ServiceProvider<TokenRejected> for MetricsProvider {
+    fn get(&self) -> TokenRejected {
+        self.token_rejected.clone()
     }
 }
