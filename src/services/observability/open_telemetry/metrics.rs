@@ -1,3 +1,4 @@
+mod into_metrig_tag;
 pub mod provider;
 pub mod settings;
 pub mod token_accepted;

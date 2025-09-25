@@ -1,3 +1,4 @@
+use crate::services::observability::open_telemetry::metrics::into_metrig_tag::IntoMetricTag;
 use cedar_policy::EntityUid;
 use opentelemetry::metrics::Counter;
 use opentelemetry::{global, KeyValue};
@@ -18,19 +19,34 @@ impl TokenAccepted {
 }
 
 pub trait TokenAcceptedMetric {
-    fn increment(&self, principal: EntityUid, action: EntityUid, resource: EntityUid);
+    fn increment<T, E, F>(&self, principal: T, action: E, resource: F)
+    where
+        T: IntoMetricTag,
+        E: IntoMetricTag,
+        F: IntoMetricTag;
 }
 
 impl TokenAcceptedMetric for TokenAccepted {
-    fn increment(&self, principal: EntityUid, action: EntityUid, resource: EntityUid) {
+    fn increment<T, E, F>(&self, principal: T, action: E, resource: F)
+    where
+        T: IntoMetricTag,
+        E: IntoMetricTag,
+        F: IntoMetricTag,
+    {
         self.0.add(
             1,
             &[
-                KeyValue::new("principal", principal.to_string()),
-                KeyValue::new("action", action.to_string()),
-                KeyValue::new("resource", resource.to_string()),
+                KeyValue::new("principal", principal.into_metric_tag()),
+                KeyValue::new("action", action.into_metric_tag()),
+                KeyValue::new("resource", resource.into_metric_tag()),
                 KeyValue::new("instance_id", self.1.clone()),
             ],
         );
+    }
+}
+
+impl IntoMetricTag for EntityUid {
+    fn into_metric_tag(self) -> String {
+        format!("{}.{}", self.type_name(), self.id().unescaped())
     }
 }
