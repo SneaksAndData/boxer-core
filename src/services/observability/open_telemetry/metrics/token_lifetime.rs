@@ -1,5 +1,5 @@
 use opentelemetry::metrics::Counter;
-use opentelemetry::{global, KeyValue};
+use opentelemetry::{KeyValue, global};
 use std::time::Duration;
 
 #[derive(Clone)]

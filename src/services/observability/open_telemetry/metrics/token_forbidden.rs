@@ -1,5 +1,5 @@
 use opentelemetry::metrics::Counter;
-use opentelemetry::{global, KeyValue};
+use opentelemetry::{KeyValue, global};
 
 #[derive(Clone)]
 pub struct TokenForbidden(Counter<u64>, String);
