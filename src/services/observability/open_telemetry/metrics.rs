@@ -1,8 +1,13 @@
+pub mod provider;
 pub mod settings;
+pub mod token_attempt;
+pub mod token_forbidden;
+pub mod token_issued;
+pub mod token_lifetime;
+pub mod token_unauthorized;
 
 use anyhow::Context;
 use opentelemetry::global;
-use opentelemetry::metrics::Counter;
 
 pub fn init_metrics() -> anyhow::Result<()> {
     let exporter = opentelemetry_otlp::MetricExporter::builder()
@@ -17,13 +22,4 @@ pub fn init_metrics() -> anyhow::Result<()> {
 
     global::set_meter_provider(meter_provider);
     Ok(())
-}
-
-pub fn token_succeeded(app_name: &'static str) -> Counter<u64> {
-    let meter = global::meter(app_name);
-    meter
-        .u64_counter(format!("{}.{}", app_name, "token_succeeded"))
-        .with_description("Count of successfully processed tokens")
-        .with_unit("tokens")
-        .build()
 }
