@@ -1,5 +1,5 @@
 use crate::services::base::upsert_repository::{
-    CanDelete, ReadOnlyRepository, UpsertRepository, UpsertRepositoryWithDelete,
+    CanDelete, ReadOnlyRepository, ReadOnlyRepositoryWithFactory, UpsertRepository, UpsertRepositoryWithDelete,
 };
 use anyhow::bail;
 use async_trait::async_trait;
@@ -9,7 +9,7 @@ use std::hash::Hash;
 use tokio::sync::RwLock;
 
 #[async_trait]
-impl<Entity, Key> ReadOnlyRepository<Key, Entity> for RwLock<HashMap<Key, Entity>>
+impl<Key, Entity> ReadOnlyRepository<Key, Entity> for RwLock<HashMap<Key, Entity>>
 where
     Entity: Clone + Send + Sync,
     Key: Debug + Eq + Hash + Send + Sync,
@@ -26,7 +26,7 @@ where
 }
 
 #[async_trait]
-impl<Entity, Key> UpsertRepository<Key, Entity> for RwLock<HashMap<Key, Entity>>
+impl<Key, Entity> UpsertRepository<Key, Entity> for RwLock<HashMap<Key, Entity>>
 where
     Entity: Send + Sync + Clone,
     Key: Send + Sync + Eq + Hash + Debug,
@@ -60,9 +60,32 @@ where
     }
 }
 
-impl<Entity, Key> UpsertRepositoryWithDelete<Key, Entity> for RwLock<HashMap<Key, Entity>>
+impl<Key, Entity> UpsertRepositoryWithDelete<Key, Entity> for RwLock<HashMap<Key, Entity>>
 where
     Entity: Send + Sync + Clone,
     Key: Send + Sync + Eq + Hash + Debug,
 {
+}
+
+#[async_trait]
+impl<Key, Entity> ReadOnlyRepositoryWithFactory<Key, Entity> for RwLock<HashMap<Key, Entity>>
+where
+    Entity: Send + Sync + Clone,
+    Key: Send + Sync + Eq + Hash + Debug,
+{
+    type ReadError = anyhow::Error;
+
+    async fn get<F>(&self, key: Key, create_new: F) -> Result<Entity, Self::ReadError>
+    where
+        F: FnOnce(&Key) -> Entity + Send,
+    {
+        let mut write_guard = self.write().await;
+        if let Some(entity) = (*write_guard).get(&key) {
+            Ok(entity.clone())
+        } else {
+            let new_entity = create_new(&key);
+            (*write_guard).insert(key, new_entity.clone());
+            Ok(new_entity)
+        }
+    }
 }

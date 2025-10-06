@@ -23,6 +23,17 @@ pub trait ReadOnlyRepository<Key, Entity>: Send + Sync {
 
 #[async_trait]
 /// Represents a repository for policies
+pub trait ReadOnlyRepositoryWithFactory<Key, Entity>: Send + Sync {
+    type ReadError;
+
+    /// Retrieves a policy by id
+    async fn get<F>(&self, key: Key, create_new: F) -> Result<Entity, Self::ReadError>
+    where
+        F: FnOnce(&Key) -> Entity + Send;
+}
+
+#[async_trait]
+/// Represents a repository for policies
 pub trait CanDelete<Key, Entity>: Send + Sync {
     type DeleteError;
 
