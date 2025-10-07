@@ -1,5 +1,6 @@
 use crate::services::base::upsert_repository::{
     CanDelete, ReadOnlyRepository, ReadOnlyRepositoryWithFactory, UpsertRepository, UpsertRepositoryWithDelete,
+    ValueFactory,
 };
 use anyhow::bail;
 use async_trait::async_trait;
@@ -71,19 +72,20 @@ where
 impl<Key, Entity> ReadOnlyRepositoryWithFactory<Key, Entity> for RwLock<HashMap<Key, Entity>>
 where
     Entity: Send + Sync + Clone,
-    Key: Send + Sync + Eq + Hash + Debug,
+    Key: Send + Sync + Eq + Hash + Debug + Clone,
 {
     type ReadError = anyhow::Error;
 
-    async fn get<F>(&self, key: Key, create_new: F) -> Result<Entity, Self::ReadError>
-    where
-        F: FnOnce(&Key) -> Entity + Send,
-    {
+    async fn get(
+        &self,
+        key: Key,
+        create_new: &dyn ValueFactory<Key, Entity, CreateError = Self::ReadError>,
+    ) -> Result<Entity, Self::ReadError> {
         let mut write_guard = self.write().await;
         if let Some(entity) = (*write_guard).get(&key) {
             Ok(entity.clone())
         } else {
-            let new_entity = create_new(&key);
+            let new_entity = create_new.create(&key).await?;
             (*write_guard).insert(key, new_entity.clone());
             Ok(new_entity)
         }

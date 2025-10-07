@@ -22,14 +22,23 @@ pub trait ReadOnlyRepository<Key, Entity>: Send + Sync {
 }
 
 #[async_trait]
+pub trait ValueFactory<Key, Entity>: Send + Sync {
+    type CreateError;
+
+    async fn create(&self, key: &Key) -> Result<Entity, Self::CreateError>;
+}
+
+#[async_trait]
 /// Represents a repository for policies
 pub trait ReadOnlyRepositoryWithFactory<Key, Entity>: Send + Sync {
     type ReadError;
 
     /// Retrieves a policy by id
-    async fn get<F>(&self, key: Key, create_new: F) -> Result<Entity, Self::ReadError>
-    where
-        F: FnOnce(&Key) -> Entity + Send;
+    async fn get(
+        &self,
+        key: Key,
+        create_new: &dyn ValueFactory<Key, Entity, CreateError = Self::ReadError>,
+    ) -> Result<Entity, Self::ReadError>;
 }
 
 #[async_trait]

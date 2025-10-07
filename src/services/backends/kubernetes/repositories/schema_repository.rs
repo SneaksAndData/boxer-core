@@ -54,7 +54,5 @@ impl ToAuditRecord for SchemaFragment {
     }
 }
 
-impl UpsertRepositoryWithDelete<String, SchemaFragment> for KubernetesRepository<SchemaDocument> {}
-
 pub type SchemaRepository =
     dyn UpsertRepositoryWithDelete<String, SchemaFragment, DeleteError = Status, Error = Status, ReadError = Status>;
