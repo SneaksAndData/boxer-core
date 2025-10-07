@@ -6,8 +6,8 @@ use crate::services::backends::kubernetes::kubernetes_resource_watcher::Kubernet
 use crate::services::backends::kubernetes::resource_update_handler::logging_update_handler::LoggingUpdateHandler;
 use anyhow::Error;
 use kube::runtime::reflector::ObjectRef;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
