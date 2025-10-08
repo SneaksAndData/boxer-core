@@ -10,5 +10,5 @@ pub trait ResourceUpdateHandler<S>: Send + Sync
 where
     S: Resource + Send + Sync,
 {
-    async fn handle_update(&self, result: &Result<S, watcher::Error>) -> ();
+    async fn handle_update(&self, result: &Result<S, watcher::Error>);
 }
