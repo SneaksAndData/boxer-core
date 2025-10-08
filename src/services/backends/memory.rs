@@ -79,7 +79,7 @@ where
     async fn get(
         &self,
         key: Key,
-        create_new: &dyn ValueFactory<Key, Entity, CreateError = Self::ReadError>,
+        value_factory: &dyn ValueFactory<Key, Entity, CreateError = Self::ReadError>,
     ) -> Result<Entity, Self::ReadError> {
         // First, acquire a read lock to check if the entity exists.
         {
@@ -89,7 +89,7 @@ where
             }
         }
         // Release the read lock before calling the factory.
-        let new_entity = create_new.create(&key).await?;
+        let new_entity = value_factory.create(&key).await?;
         // Acquire a write lock to insert the new entity.
         let mut write_guard = self.write().await;
         // Check again in case another thread inserted it while we were creating.
