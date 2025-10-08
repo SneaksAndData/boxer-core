@@ -15,7 +15,7 @@ where
     T: Resource + Debug + Send + Sync + 'static,
 {
     async fn handle_update(&self, event: &Result<T, watcher::Error>) -> () {
-        if let Err(e) = event {
+        if let Err(e) = event.as_ref() {
             warn!("Error processing event: {}", e);
             return;
         }
