@@ -23,7 +23,7 @@ impl<T> ResourceUpdateHandler<T> for ComposedUpdateHandler<T>
 where
     T: Resource + Debug + Send + Sync + 'static,
 {
-    async fn handle_update(&self, result: &Result<T, kube::runtime::watcher::Error>) -> () {
+    async fn handle_update(&self, result: &Result<T, kube::runtime::watcher::Error>) {
         for handler in &self.handlers {
             handler.handle_update(result).await;
         }
