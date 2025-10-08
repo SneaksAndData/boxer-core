@@ -81,11 +81,21 @@ where
         key: Key,
         create_new: &dyn ValueFactory<Key, Entity, CreateError = Self::ReadError>,
     ) -> Result<Entity, Self::ReadError> {
+        // First, acquire a read lock to check if the entity exists.
+        {
+            let read_guard = self.read().await;
+            if let Some(entity) = (*read_guard).get(&key) {
+                return Ok(entity.clone());
+            }
+        }
+        // Release the read lock before calling the factory.
+        let new_entity = create_new.create(&key).await?;
+        // Acquire a write lock to insert the new entity.
         let mut write_guard = self.write().await;
+        // Check again in case another thread inserted it while we were creating.
         if let Some(entity) = (*write_guard).get(&key) {
             Ok(entity.clone())
         } else {
-            let new_entity = create_new.create(&key).await?;
             (*write_guard).insert(key, new_entity.clone());
             Ok(new_entity)
         }
