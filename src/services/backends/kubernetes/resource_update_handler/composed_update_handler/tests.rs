@@ -1,12 +1,12 @@
-use crate::services::backends::kubernetes::resource_update_handler::composed_update_handler::ComposedUpdateHandler;
 use crate::services::backends::kubernetes::resource_update_handler::ResourceUpdateHandler;
+use crate::services::backends::kubernetes::resource_update_handler::composed_update_handler::ComposedUpdateHandler;
 use anyhow::anyhow;
 use async_trait::async_trait;
 use k8s_openapi::api::core::v1::ConfigMap;
 use kube::runtime::watcher;
+use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
-use std::sync::Arc;
 
 struct TestResourceUpdateHandler {
     sucessfull_calls: Arc<AtomicUsize>,
