@@ -1,14 +1,9 @@
-#[cfg(not(test))]
-use log::{debug, warn};
-
-#[cfg(test)]
-use std::{println as warn, println as debug};
-
-use crate::services::backends::kubernetes::kubernetes_resource_watcher::ResourceUpdateHandler;
+use crate::services::backends::kubernetes::resource_update_handler::ResourceUpdateHandler;
 use async_trait::async_trait;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::Resource;
 use kube::runtime::watcher;
+use log::{debug, warn};
 
 use std::fmt::Debug;
 
@@ -19,8 +14,8 @@ impl<T> ResourceUpdateHandler<T> for LoggingUpdateHandler
 where
     T: Resource + Debug + Send + Sync + 'static,
 {
-    async fn handle_update(&self, event: Result<T, watcher::Error>) -> () {
-        if let Err(e) = event {
+    async fn handle_update(&self, event: &Result<T, watcher::Error>) -> () {
+        if let Err(e) = event.as_ref() {
             warn!("Error processing event: {}", e);
             return;
         }

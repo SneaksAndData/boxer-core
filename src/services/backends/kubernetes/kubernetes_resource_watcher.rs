@@ -1,21 +1,13 @@
 use crate::services::backends::kubernetes::kubernetes_resource_manager::KubernetesResourceManagerConfig;
+use crate::services::backends::kubernetes::resource_update_handler::ResourceUpdateHandler;
 use async_trait::async_trait;
 use k8s_openapi::NamespaceResourceScope;
 use kube::Resource;
-use kube::runtime::watcher;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
-
-#[async_trait]
-pub trait ResourceUpdateHandler<S>: Send + Sync
-where
-    S: Resource + Send + Sync,
-{
-    async fn handle_update(&self, result: Result<S, watcher::Error>) -> ();
-}
 
 #[async_trait]
 pub trait KubernetesResourceWatcher<H, R>: Sized

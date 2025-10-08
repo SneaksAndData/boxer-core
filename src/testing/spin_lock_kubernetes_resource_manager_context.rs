@@ -3,7 +3,7 @@ use crate::services::backends::kubernetes::kubernetes_resource_manager::spin_loc
 use crate::services::backends::kubernetes::kubernetes_resource_manager::{
     KubernetesResourceManagerConfig, UpdateLabels,
 };
-use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
+use crate::services::backends::kubernetes::resource_update_handler::logging_update_handler::LoggingUpdateHandler;
 use crate::testing::api_client_context::ApiClientContext;
 use serde::Serialize;
 use serde::de::DeserializeOwned;

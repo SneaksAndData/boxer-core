@@ -6,9 +6,8 @@ use crate::services::backends::kubernetes::kubernetes_resource_manager::object_o
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status::{Conflict, NotOwned};
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::owner_conflict_details::OwnerConflictDetails;
-use crate::services::backends::kubernetes::kubernetes_resource_watcher::{
-    KubernetesResourceWatcher, ResourceUpdateHandler,
-};
+use crate::services::backends::kubernetes::kubernetes_resource_watcher::KubernetesResourceWatcher;
+use crate::services::backends::kubernetes::resource_update_handler::ResourceUpdateHandler;
 use anyhow::{Error, anyhow};
 use async_trait::async_trait;
 use futures::StreamExt;
@@ -217,7 +216,7 @@ where
             .for_each(move |r| {
                 let update_handler = update_handler.clone();
                 async move {
-                    update_handler.handle_update(r).await;
+                    update_handler.handle_update(&r).await;
                 }
             });
 

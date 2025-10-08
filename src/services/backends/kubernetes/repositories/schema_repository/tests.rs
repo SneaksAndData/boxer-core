@@ -5,6 +5,7 @@ use crate::services::backends::kubernetes::kubernetes_resource_manager::status::
 use crate::services::backends::kubernetes::repositories::TryIntoObjectRef;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_reduced_schema::reduced_schema;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_schema::schema;
+use crate::services::backends::kubernetes::resource_update_handler::logging_update_handler::LoggingUpdateHandler;
 use crate::testing::api_extensions::{WaitForDelete, WaitForResource};
 use crate::testing::spin_lock_kubernetes_resource_manager_context::SpinLockKubernetesResourceManagerTestContext;
 use assert_matches::assert_matches;
@@ -13,6 +14,7 @@ use kube::api::PostParams;
 use kube::runtime::reflector::ObjectRef;
 use maplit::btreemap;
 use std::collections::BTreeMap;
+use std::marker::PhantomData;
 use std::time::Duration;
 use test_context::{AsyncTestContext, test_context};
 
@@ -29,9 +31,10 @@ impl AsyncTestContext for KubernetesSchemaRepositoryTest {
     async fn setup() -> KubernetesSchemaRepositoryTest {
         let parent = SpinLockKubernetesResourceManagerTestContext::setup().await;
         let label = parent.config.owner_mark.get_owner_name().clone();
-        let repository = Arc::new(KubernetesRepository {
+        let repository = Arc::new(KubernetesRepository::<SchemaDocument, LoggingUpdateHandler> {
             resource_manager: parent.manager,
             operation_timeout: parent.config.operation_timeout,
+            _phantom: PhantomData,
         });
         Self {
             repository,
