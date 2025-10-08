@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use crate::services::backends::kubernetes::resource_update_handler::ResourceUpdateHandler;
 use async_trait::async_trait;
 use kube::Resource;
