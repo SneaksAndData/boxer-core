@@ -1,7 +1,7 @@
 use super::*;
 use crate::contracts::dynamic_claims_collection::DynamicClaims;
 use crate::contracts::internal_token::v1::{PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, VALIDATOR_SCHEMA_ID_KEY};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 
 #[test]
