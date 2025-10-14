@@ -13,6 +13,8 @@ pub mod api_extensions;
 pub mod spin_lock_kubernetes_resource_manager_context;
 pub mod temp_namespace_context;
 
+/// COVERAGE: disabled since this is a testing helper
+#[cfg_attr(coverage, coverage(off))]
 pub async fn get_kubeconfig() -> anyhow::Result<Config> {
     let output = Command::new("kind")
         .args(&["get", "kubeconfig", "--name", "kind"])

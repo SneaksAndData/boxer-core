@@ -13,6 +13,7 @@ pub mod token_unauthorized;
 use anyhow::Context;
 use opentelemetry::global;
 
+/// COVERAGE: disabled since this is just initialization code
 #[cfg_attr(coverage, coverage(off))]
 pub fn init_metrics() -> anyhow::Result<()> {
     let exporter = opentelemetry_otlp::MetricExporter::builder()

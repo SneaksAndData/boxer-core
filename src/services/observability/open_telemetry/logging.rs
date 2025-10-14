@@ -7,6 +7,7 @@ use opentelemetry_otlp::LogExporter;
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::logs::SdkLoggerProvider;
 
+/// COVERAGE: disabled since this is just initialization code
 #[cfg_attr(coverage, coverage(off))]
 pub fn init_logger(environment: String) -> Result<Box<dyn Log>> {
     let exporter = LogExporter::builder().with_tonic().build()?;

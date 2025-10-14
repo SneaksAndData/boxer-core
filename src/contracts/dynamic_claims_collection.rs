@@ -1,14 +1,20 @@
 use josekit::jwt::JwtPayload;
 use serde_json::Value;
 
-pub type DynamicClaimsCollection = JwtPayload;
-pub fn get_claim(claims: &DynamicClaimsCollection, key: &str) -> Option<String> {
-    let value = claims.claim(key)?;
-    let value = value.as_str()?;
-    Some(value.to_owned())
+pub trait DynamicClaims {
+    fn get_claim(&self, key: &str) -> Option<String>;
+    fn get_value(&self, key: &str) -> Option<Value>;
 }
 
-pub fn get_value(claims: &DynamicClaimsCollection, key: &str) -> Option<Value> {
-    let value = claims.claim(key)?;
-    Some(value.to_owned())
+impl DynamicClaims for JwtPayload {
+    fn get_claim(&self, key: &str) -> Option<String> {
+        let value = self.claim(key)?;
+        let value = value.as_str()?;
+        Some(value.to_owned())
+    }
+    fn get_value(&self, key: &str) -> Option<Value> {
+        let value = self.claim(key)?;
+        Some(value.to_owned())
+    }
 }
+pub type DynamicClaimsCollection = JwtPayload;

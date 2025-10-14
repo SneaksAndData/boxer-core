@@ -8,6 +8,7 @@ use std::fmt::Display;
 
 /// Initialize OpenTelemetry tracing with OTLP exporter
 /// Should be called once at the start of the application
+/// COVERAGE: disabled since this is just initialization code
 #[cfg_attr(coverage, coverage(off))]
 pub fn init_tracer() -> anyhow::Result<()> {
     global::set_text_map_propagator(TraceContextPropagator::new());
@@ -25,6 +26,7 @@ pub fn init_tracer() -> anyhow::Result<()> {
 /// Start a new trace span with the given name
 /// Returns a Context containing the new span
 /// The caller is responsible for ending the span
+/// COVERAGE: disabled since this should be tested in integration tests only
 #[cfg_attr(coverage, coverage(off))]
 pub fn start_trace(span_name: &str, tracer_name: Option<String>) -> Context {
     let tracer = global::tracer(tracer_name.unwrap_or("boxer".to_string()));
@@ -46,6 +48,7 @@ where
     E: Display,
 {
     #[cfg_attr(coverage, coverage(off))]
+    /// COVERAGE: disabled since this should be tested in integration tests only
     fn stop_trace(self, ctx: Context) -> Self {
         if let Err(err) = &self {
             ctx.span().set_status(Status::Error {
