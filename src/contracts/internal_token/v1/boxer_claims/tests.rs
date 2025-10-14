@@ -1,7 +1,7 @@
 use super::*;
 use crate::contracts::dynamic_claims_collection::DynamicClaims;
 use crate::contracts::internal_token::v1::{PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, VALIDATOR_SCHEMA_ID_KEY};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::collections::HashMap;
 
 #[test]
@@ -99,11 +99,6 @@ impl MockClaims {
 
     fn remove_value(mut self, k: &'static str) -> Self {
         self.values.remove(k);
-        self
-    }
-
-    fn with_claim(mut self, k: &'static str, v: &str) -> Self {
-        self.claims.insert(k, v.to_string());
         self
     }
 
