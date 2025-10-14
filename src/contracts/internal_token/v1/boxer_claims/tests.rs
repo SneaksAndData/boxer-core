@@ -1,13 +1,15 @@
 use super::*;
 use crate::contracts::dynamic_claims_collection::DynamicClaims;
 use crate::contracts::internal_token::v1::{PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, VALIDATOR_SCHEMA_ID_KEY};
-use serde_json::{json, Value};
+use pretty_assertions::assert_eq;
+use serde_json::{Value, json};
 use std::collections::HashMap;
 
 #[test]
 fn test_to_boxer_claims_success() {
     let mc = MockClaims::base();
     let claims = mc.to_boxer_claims().expect("should succeed");
+    assert!(claims.schema.to_json_string().unwrap().contains("entityTypes"));
     assert_eq!(claims.schema_id, "schema-v1");
     assert_eq!(claims.validator_schema_id, "validator-schema-v1");
     assert_eq!(claims.principal.uid().to_string(), "User::\"alice\"");
