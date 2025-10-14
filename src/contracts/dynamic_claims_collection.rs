@@ -7,11 +7,16 @@ pub trait DynamicClaims {
 }
 
 impl DynamicClaims for JwtPayload {
+    // COVERAGE: Disable since the function is trivial
+    #[cfg_attr(coverage, coverage(off))]
     fn get_claim(&self, key: &str) -> Option<String> {
         let value = self.claim(key)?;
         let value = value.as_str()?;
         Some(value.to_owned())
     }
+
+    // COVERAGE: Disable since the function is trivial
+    #[cfg_attr(coverage, coverage(off))]
     fn get_value(&self, key: &str) -> Option<Value> {
         let value = self.claim(key)?;
         Some(value.to_owned())

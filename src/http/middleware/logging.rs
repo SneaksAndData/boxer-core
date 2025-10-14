@@ -1,10 +1,12 @@
-use actix_web::Error;
 use actix_web::body::MessageBody;
 use actix_web::dev::ServiceRequest;
 use actix_web::dev::ServiceResponse;
 use actix_web::middleware::Next;
+use actix_web::Error;
 use log::warn;
 
+// COVERAGE: Disable since the function is trivial
+#[cfg_attr(coverage, coverage(off))]
 pub async fn custom_error_logging(
     req: ServiceRequest,
     srv: Next<impl MessageBody>,
