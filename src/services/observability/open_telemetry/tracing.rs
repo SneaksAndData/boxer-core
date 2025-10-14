@@ -2,7 +2,7 @@ pub mod settings;
 pub mod tracing_facade;
 
 use opentelemetry::trace::{Status, TraceContextExt, Tracer};
-use opentelemetry::{Context, global};
+use opentelemetry::{global, Context};
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use std::fmt::Display;
 
@@ -36,17 +36,16 @@ pub fn start_trace(span_name: &str, tracer_name: Option<String>) -> Context {
 }
 
 /// Extension trait for Result to stop tracing and set span status
-#[cfg_attr(coverage, coverage(off))]
 pub trait ErrorExt<T, E> {
     fn stop_trace(self, ctx: Context) -> Self;
 }
 
 /// Implementation of ErrorExt for Result
-#[cfg_attr(coverage, coverage(off))]
 impl<T, E> ErrorExt<T, E> for Result<T, E>
 where
     E: Display,
 {
+    #[cfg_attr(coverage, coverage(off))]
     fn stop_trace(self, ctx: Context) -> Self {
         if let Err(err) = &self {
             ctx.span().set_status(Status::Error {

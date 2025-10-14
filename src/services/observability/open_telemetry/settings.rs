@@ -3,7 +3,6 @@ use crate::services::observability::open_telemetry::metrics::settings::MetricsSe
 use crate::services::observability::open_telemetry::tracing::settings::TracingSettings;
 use serde::Deserialize;
 
-#[cfg_attr(coverage, coverage(off))]
 #[derive(Debug, Deserialize)]
 pub struct OpenTelemetrySettings {
     pub log_settings: LogSettings,
