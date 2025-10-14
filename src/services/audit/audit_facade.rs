@@ -1,11 +1,13 @@
+#[cfg(test)]
+mod tests;
 pub mod to_audit_record;
 
-use crate::services::audit::AuditService;
 use crate::services::audit::audit_facade::to_audit_record::ToAuditRecord;
 use crate::services::audit::events::resource_delete_audit_event::ResourceDeleteAuditEvent;
 use crate::services::audit::events::resource_modification_audit_event::{
     ModificationResult, ResourceModificationAuditEvent,
 };
+use crate::services::audit::AuditService;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
 use crate::services::base::upsert_repository::{
     CanDelete, ReadOnlyRepository, UpsertRepository, UpsertRepositoryWithDelete,

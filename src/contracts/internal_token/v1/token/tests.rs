@@ -1,3 +1,4 @@
+use crate::contracts::dynamic_claims_collection::DynamicClaims;
 use crate::contracts::internal_token::v1::boxer_claims::ToBoxerClaims;
 use crate::contracts::internal_token::v1::token::InternalToken;
 use cedar_policy::{Entity, EntityUid, SchemaFragment};
@@ -33,6 +34,23 @@ fn test_serialization_integrity() {
             .and_then(|et| et.get("User"))
             .is_some()
     );
+}
+
+#[test]
+fn test_get_version() {
+    let token = InternalToken::new(
+        make_principal(),
+        make_schema(),
+        "alice-ext".to_string(),
+        "github".to_string(),
+        "schema-v1".to_string(),
+        Duration::from_secs(600),
+        "validator-schema-v1".to_string(),
+    );
+
+    let jwt: JwtPayload = token.try_into().expect("to jwt");
+
+    assert_eq!(jwt.get_version().expect("has no version claim"), "v1");
 }
 
 fn make_principal() -> Entity {
