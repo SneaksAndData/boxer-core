@@ -1,10 +1,10 @@
-use crate::services::audit::AuditService;
 use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
 use crate::services::audit::events::resource_delete_audit_event::ResourceDeleteAuditEvent;
 use crate::services::audit::events::resource_modification_audit_event::{
     ModificationResult, ResourceModificationAuditEvent,
 };
 use crate::services::audit::events::token_validation_event::TokenValidationEvent;
+use crate::services::audit::AuditService;
 use anyhow::Result;
 
 pub struct LogAuditService;
@@ -16,6 +16,8 @@ impl LogAuditService {
 }
 
 impl AuditService for LogAuditService {
+    // COVERAGE: disabled since this should be tested in integration tests only
+    #[cfg_attr(coverage, coverage(off))]
     fn record_authorization(&self, event: AuthorizationAuditEvent) -> Result<()> {
         log::info!(
             // Indicates the audit events for easier filtering in log aggregation systems
@@ -35,6 +37,8 @@ impl AuditService for LogAuditService {
         Ok(())
     }
 
+    // COVERAGE: disabled since this should be tested in integration tests only
+    #[cfg_attr(coverage, coverage(off))]
     fn record_resource_deletion(&self, event: ResourceDeleteAuditEvent) -> Result<()> {
         log::info!(
             // Indicates the audit events for easier filtering in log aggregation systems
@@ -51,6 +55,8 @@ impl AuditService for LogAuditService {
         Ok(())
     }
 
+    // COVERAGE: disabled since this should be tested in integration tests only
+    #[cfg_attr(coverage, coverage(off))]
     fn record_resource_modification(&self, event: ResourceModificationAuditEvent) -> Result<()> {
         if let ModificationResult::Success(result) = &event.modification_result {
             log::info!(
@@ -81,6 +87,8 @@ impl AuditService for LogAuditService {
         Ok(())
     }
 
+    // COVERAGE: disabled since this should be tested in integration tests only
+    #[cfg_attr(coverage, coverage(off))]
     fn record_token_validation(&self, event: TokenValidationEvent) -> Result<()> {
         log::info!(
             // Indicates the audit events for easier filtering in log aggregation systems
