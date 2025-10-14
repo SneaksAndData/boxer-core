@@ -6,6 +6,9 @@ edition = "2024"
 [features]
 testing = []
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
+
 [dependencies]
 
 # Kubernetes dependencies
