@@ -26,7 +26,7 @@ jobs:
       - name: Install minimal stable with clippy and rustfmt
         uses: actions-rust-lang/setup-rust-toolchain@v1.15.0
         with:
-          toolchain: stable
+          toolchain: nightly
           components: rustfmt, clippy
 
       - name: Install just, cargo-llvm-cov, cargo-nextest
