@@ -1,16 +1,16 @@
 use async_trait::async_trait;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::RwLock;
 
-use crate::services::audit::audit_facade::to_audit_record::ToAuditRecord;
+use crate::services::audit::AuditService;
 use crate::services::audit::audit_facade::WithAuditFacade;
+use crate::services::audit::audit_facade::to_audit_record::ToAuditRecord;
 use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
 use crate::services::audit::events::resource_delete_audit_event::ResourceDeleteAuditEvent;
 use crate::services::audit::events::resource_modification_audit_event::ResourceModificationAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationEvent;
-use crate::services::audit::AuditService;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
 use crate::services::base::upsert_repository::{
     CanDelete, ReadOnlyRepository, UpsertRepository, UpsertRepositoryWithDelete,

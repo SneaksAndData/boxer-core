@@ -1,5 +1,5 @@
 use crate::contracts::internal_token::API_VERSION_KEY;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use josekit::jwt::JwtPayload;
 use serde_json::Value;
 
