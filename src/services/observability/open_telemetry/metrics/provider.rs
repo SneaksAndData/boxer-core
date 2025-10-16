@@ -1,10 +1,10 @@
-use crate::services::observability::open_telemetry::metrics::token_accepted::TokenAccepted;
-use crate::services::observability::open_telemetry::metrics::token_attempt::TokenAttempt;
-use crate::services::observability::open_telemetry::metrics::token_forbidden::TokenForbidden;
-use crate::services::observability::open_telemetry::metrics::token_issued::TokenIssued;
-use crate::services::observability::open_telemetry::metrics::token_lifetime::TokenLifetime;
-use crate::services::observability::open_telemetry::metrics::token_rejected::TokenRejected;
-use crate::services::observability::open_telemetry::metrics::token_unauthorized::TokenUnauthorized;
+use crate::services::observability::open_telemetry::metrics::metric_recorders::token_accepted::TokenAccepted;
+use crate::services::observability::open_telemetry::metrics::metric_recorders::token_attempt::TokenAttempt;
+use crate::services::observability::open_telemetry::metrics::metric_recorders::token_forbidden::TokenForbidden;
+use crate::services::observability::open_telemetry::metrics::metric_recorders::token_issued::TokenIssued;
+use crate::services::observability::open_telemetry::metrics::metric_recorders::token_lifetime::TokenLifetime;
+use crate::services::observability::open_telemetry::metrics::metric_recorders::token_rejected::TokenRejected;
+use crate::services::observability::open_telemetry::metrics::metric_recorders::token_unauthorized::TokenUnauthorized;
 use crate::services::service_provider::ServiceProvider;
 
 pub struct MetricsProvider {
