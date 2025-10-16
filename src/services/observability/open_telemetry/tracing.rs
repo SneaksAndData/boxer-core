@@ -1,8 +1,11 @@
 pub mod settings;
+
+// COVERAGE: disabled since the module should be tested in integration tests only
+#[cfg_attr(coverage, coverage(off))]
 pub mod tracing_facade;
 
 use opentelemetry::trace::{Status, TraceContextExt, Tracer};
-use opentelemetry::{Context, global};
+use opentelemetry::{global, Context};
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use std::fmt::Display;
 
