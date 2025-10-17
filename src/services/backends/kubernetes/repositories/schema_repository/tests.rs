@@ -1,20 +1,20 @@
 use super::*;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status::{Deleted, NotOwned};
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::not_found_details::NotFoundDetails;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::owner_conflict_details::OwnerConflictDetails;
-use crate::services::backends::kubernetes::repositories::TryIntoObjectRef;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status::{Deleted, NotFound, NotOwned};
 use crate::services::backends::kubernetes::repositories::schema_repository::test_reduced_schema::reduced_schema;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_schema::schema;
+use crate::services::backends::kubernetes::repositories::TryIntoObjectRef;
 use crate::testing::api_extensions::{WaitForDelete, WaitForResource};
 use crate::testing::spin_lock_kubernetes_resource_manager_context::SpinLockKubernetesResourceManagerTestContext;
 use assert_matches::assert_matches;
-use kube::Api;
 use kube::api::PostParams;
 use kube::runtime::reflector::ObjectRef;
+use kube::Api;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::time::Duration;
-use test_context::{AsyncTestContext, test_context};
+use test_context::{test_context, AsyncTestContext};
 
 const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -195,10 +195,11 @@ async fn test_schema_no_owner_conflict(ctx: &mut KubernetesSchemaRepositoryTest)
     // Assert
     assert_matches!(
         insertion_result,
-        Err(Status::NotOwned(OwnerConflictDetails {
-            object_name: _,
-            object_namespace: _,
+        Err(NotOwned(OwnerConflictDetails {
+            name: _,
+            namespace: _,
             current_owner: None,
+            resource_type: _,
         }))
     );
 }
@@ -237,9 +238,10 @@ async fn test_schema_other_owner_conflict(ctx: &mut KubernetesSchemaRepositoryTe
     assert_matches!(
         insertion_result,
         Err(NotOwned(OwnerConflictDetails {
-            object_name: _,
-            object_namespace: _,
+            name: _,
+            namespace: _,
             current_owner: Some(_),
+            resource_type: _,
         }))
     );
 }
@@ -270,15 +272,50 @@ async fn test_schema_delete_not_owned_resource(ctx: &mut KubernetesSchemaReposit
         .wait_for_creation(name.to_string(), ctx.namespace.to_string(), DEFAULT_TEST_TIMEOUT)
         .await;
 
-    let deletion_result = ctx.repository.delete(name.to_string()).await;
+    let after = ctx.repository.delete(name.to_string()).await;
 
     // Assert
+    assert_eq!(
+        after.as_ref().unwrap_err().to_string(),
+        format!(
+            "Owner conflict: Resource of kind 'SchemaDocument' with name: '{}',  namespace '{}' is not owned by us, current owner: test-owner",
+            name, ctx.namespace
+        )
+    );
     assert_matches!(
-        deletion_result,
+        after,
         Err(NotOwned(OwnerConflictDetails {
-            object_name: _,
-            object_namespace: _,
+            name: _,
+            namespace: _,
             current_owner: Some(_),
+            resource_type: _,
         }))
+    );
+}
+
+#[test_context(KubernetesSchemaRepositoryTest)]
+#[tokio::test]
+async fn test_not_existing_schema(ctx: &mut KubernetesSchemaRepositoryTest) {
+    // Arrange
+    let name = "never-created-schema";
+
+    // Act
+    let after = ctx.repository.get(name.to_string()).await;
+
+    // Assert
+    assert_eq!(
+        after.as_ref().unwrap_err().to_string(),
+        format!(
+            "Resource not found: Resource of kind 'SchemaDocument' with name: '{}',  namespace '{}' not found",
+            name, ctx.namespace
+        )
+    );
+    assert_matches!(
+        after.unwrap_err(),
+        NotFound(NotFoundDetails {
+            name: _,
+            namespace: _,
+            resource_type: rt,
+        }) if rt == "SchemaDocument"
     );
 }
