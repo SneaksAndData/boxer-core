@@ -12,9 +12,9 @@ use crate::services::backends::kubernetes::kubernetes_repository::soft_delete_re
 use crate::services::backends::kubernetes::kubernetes_repository::to_resource::ToResource;
 use crate::services::backends::kubernetes::kubernetes_repository::try_from_resource::TryFromResource;
 use crate::services::backends::kubernetes::kubernetes_repository::try_into_object_ref::TryIntoObjectRef;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::status::not_found_details::NotFoundDetails;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::UpdateLabels;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::not_found_details::NotFoundDetails;
 use crate::services::base::upsert_repository::{CanDelete, ReadOnlyRepository, UpsertRepository};
 use async_trait::async_trait;
 use kube::runtime::reflector::ObjectRef;

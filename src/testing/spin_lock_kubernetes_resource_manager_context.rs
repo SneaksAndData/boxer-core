@@ -5,8 +5,8 @@ use crate::services::backends::kubernetes::kubernetes_resource_manager::{
 use crate::services::backends::kubernetes::kubernetes_resource_watcher::KubernetesResourceWatcher;
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
 use crate::testing::api_client_context::ApiClientContext;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
