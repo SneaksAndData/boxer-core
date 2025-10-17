@@ -24,7 +24,7 @@ impl CapturingLogger {
 
 impl Log for CapturingLogger {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        metadata.level() >= self.min_level
+        metadata.level() <= self.min_level
     }
 
     fn log(&self, record: &Record<'_>) {
