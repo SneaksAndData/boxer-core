@@ -1,20 +1,20 @@
 use super::*;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status::{Deleted, NotFound, NotOwned};
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::not_found_details::NotFoundDetails;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::owner_conflict_details::OwnerConflictDetails;
-use crate::services::backends::kubernetes::repositories::TryIntoObjectRef;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status::{Deleted, NotFound, NotOwned};
 use crate::services::backends::kubernetes::repositories::schema_repository::test_reduced_schema::reduced_schema;
 use crate::services::backends::kubernetes::repositories::schema_repository::test_schema::schema;
+use crate::services::backends::kubernetes::repositories::TryIntoObjectRef;
 use crate::testing::api_extensions::{WaitForDelete, WaitForResource};
 use crate::testing::spin_lock_kubernetes_resource_manager_context::SpinLockKubernetesResourceManagerTestContext;
 use assert_matches::assert_matches;
-use kube::Api;
 use kube::api::PostParams;
 use kube::runtime::reflector::ObjectRef;
+use kube::Api;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::time::Duration;
-use test_context::{AsyncTestContext, test_context};
+use test_context::{test_context, AsyncTestContext};
 
 const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -318,4 +318,40 @@ async fn test_not_existing_schema(ctx: &mut KubernetesSchemaRepositoryTest) {
             resource_type: rt,
         }) if rt == "SchemaDocument"
     );
+}
+
+#[test_context(KubernetesSchemaRepositoryTest)]
+#[tokio::test]
+async fn test_exists(ctx: &mut KubernetesSchemaRepositoryTest) {
+    // Arrange
+    let name = "test-schema".to_string();
+    let or: ObjectRef<SchemaDocument> = name.clone().try_into_object_ref(ctx.namespace.clone()).unwrap();
+    let schema_fragment = SchemaFragment::from_json_value(schema()).expect("Failed to create schema fragment");
+
+    // Act
+    ctx.repository
+        .upsert(name.clone(), schema_fragment.clone())
+        .await
+        .expect("Failed to upsert schema");
+    ctx.api
+        .wait_for_creation(or.name.clone(), ctx.namespace.clone(), DEFAULT_TEST_TIMEOUT)
+        .await;
+
+    let after = ctx.repository.exists(name.clone()).await;
+
+    // Assert
+    assert_eq!(after.unwrap(), true);
+}
+
+#[test_context(KubernetesSchemaRepositoryTest)]
+#[tokio::test]
+async fn test_not_exists(ctx: &mut KubernetesSchemaRepositoryTest) {
+    // Arrange
+    let name = "never-created-schema";
+
+    // Act
+    let after = ctx.repository.exists(name.to_string()).await;
+
+    // Assert
+    assert_eq!(after.unwrap(), false);
 }
