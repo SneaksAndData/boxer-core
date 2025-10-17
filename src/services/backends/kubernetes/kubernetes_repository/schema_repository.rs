@@ -8,11 +8,13 @@ mod test_reduced_schema;
 mod test_schema;
 
 use crate::services::audit::audit_facade::to_audit_record::ToAuditRecord;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
-use crate::services::backends::kubernetes::repositories::schema_repository::schema_document::{
+use crate::services::backends::kubernetes::kubernetes_repository::schema_repository::schema_document::{
     SchemaDocument, SchemaDocumentSpec,
 };
-use crate::services::backends::kubernetes::repositories::{KubernetesRepository, ToResource, TryFromResource};
+use crate::services::backends::kubernetes::kubernetes_repository::try_from_resource::TryFromResource;
+use crate::services::backends::kubernetes::kubernetes_repository::{KubernetesRepository, ToResource};
+use crate::services::backends::kubernetes::kubernetes_resource_manager::GenericKubernetesResourceManager;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
 use crate::services::base::upsert_repository::UpsertRepositoryWithDelete;
 use cedar_policy::SchemaFragment;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
@@ -54,7 +56,10 @@ impl ToAuditRecord for SchemaFragment {
     }
 }
 
-impl UpsertRepositoryWithDelete<String, SchemaFragment> for KubernetesRepository<SchemaDocument> {}
+impl UpsertRepositoryWithDelete<String, SchemaFragment>
+    for KubernetesRepository<SchemaDocument, GenericKubernetesResourceManager<SchemaDocument>>
+{
+}
 
 pub type SchemaRepository =
     dyn UpsertRepositoryWithDelete<String, SchemaFragment, DeleteError = Status, Error = Status, ReadError = Status>;

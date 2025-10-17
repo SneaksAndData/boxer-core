@@ -1,82 +1,50 @@
-use crate::services::backends::kubernetes::kubernetes_resource_manager::spin_lock::SpinLockKubernetesResourceManager;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
+pub mod resource_manager;
+pub mod schema_repository;
+pub mod soft_delete_resource;
+#[cfg(test)]
+mod tests;
+pub mod to_resource;
+mod try_from_resource;
+pub mod try_into_object_ref;
+
+use crate::services::backends::kubernetes::kubernetes_repository::resource_manager::ResourceManager;
+use crate::services::backends::kubernetes::kubernetes_repository::soft_delete_resource::SoftDeleteResource;
+use crate::services::backends::kubernetes::kubernetes_repository::to_resource::ToResource;
+use crate::services::backends::kubernetes::kubernetes_repository::try_from_resource::TryFromResource;
+use crate::services::backends::kubernetes::kubernetes_repository::try_into_object_ref::TryIntoObjectRef;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::not_found_details::NotFoundDetails;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::{
-    KubernetesResourceManagerConfig, UpdateLabels,
-};
-use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
-use crate::services::backends::kubernetes::repositories::try_into_object_ref::TryIntoObjectRef;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::UpdateLabels;
 use crate::services::base::upsert_repository::{CanDelete, ReadOnlyRepository, UpsertRepository};
 use async_trait::async_trait;
-use k8s_openapi::NamespaceResourceScope;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::runtime::reflector::ObjectRef;
 use log::{debug, warn};
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-use std::fmt::Debug;
 use std::hash::Hash;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::Instant;
 
-pub mod schema_repository;
-mod tests;
-pub mod try_into_object_ref;
-
-pub trait SoftDeleteResource:
-    kube::Resource<Scope = NamespaceResourceScope> + Clone + Debug + Serialize + DeserializeOwned + Send + Sync
-{
-    fn is_deleted(&self) -> bool;
-    fn set_deleted(&mut self);
-    fn clear_managed_fields(&mut self);
-}
-
-pub trait ToResource<R>
+pub struct KubernetesRepository<R, M>
 where
-    R: SoftDeleteResource,
+    R: kube::Resource + SoftDeleteResource + Send + Sync + 'static,
+    R::DynamicType: Hash + Eq,
+    M: ResourceManager<R> + Send + Sync + 'static,
 {
-    fn to_resource(&self, object_meta: &ObjectMeta) -> Result<R, Status>;
-    fn to_resource_default(&self, object_ref: &ObjectRef<R>) -> Result<R, Status> {
-        let object_meta = ObjectMeta {
-            name: Some(object_ref.name.clone()),
-            namespace: object_ref.namespace.clone(),
-            ..Default::default()
-        };
-        self.to_resource(&object_meta)
-    }
-}
-
-pub trait TryFromResource<R>
-where
-    R: kube::Resource + Send + Sync + 'static,
-{
-    type Error;
-    fn try_from_resource(resource: Arc<R>) -> Result<Self, Self::Error>
-    where
-        Self: Sized;
-}
-
-pub struct KubernetesRepository<Resource>
-where
-    Resource: kube::Resource + SoftDeleteResource + Send + Sync + 'static,
-    Resource::DynamicType: Hash + Eq,
-{
-    pub resource_manager: SpinLockKubernetesResourceManager<Resource>,
+    pub resource_manager: M,
     pub operation_timeout: Duration,
+    _marker: std::marker::PhantomData<R>,
 }
 
-impl<R> KubernetesRepository<R>
+impl<R, M> KubernetesRepository<R, M>
 where
     R: kube::Resource + SoftDeleteResource + UpdateLabels + Send + Sync + 'static,
     R::DynamicType: Hash + Eq + Clone + Default,
+    M: ResourceManager<R> + Send + Sync + 'static,
 {
-    pub async fn start(config: KubernetesResourceManagerConfig) -> anyhow::Result<Self> {
-        let operation_timeout = config.operation_timeout;
-        let resource_manager = SpinLockKubernetesResourceManager::start(config, Arc::new(LoggingUpdateHandler)).await?;
-        Ok(KubernetesRepository {
+    pub async fn start(resource_manager: M, operation_timeout: Duration) -> anyhow::Result<Self> {
+        Ok(KubernetesRepository::<R, M> {
             resource_manager,
             operation_timeout,
+            _marker: std::marker::PhantomData,
         })
     }
 
@@ -98,12 +66,13 @@ where
 }
 
 #[async_trait]
-impl<Key, Value, Resource> ReadOnlyRepository<Key, Value> for KubernetesRepository<Resource>
+impl<M, Key, Value, Resource> ReadOnlyRepository<Key, Value> for KubernetesRepository<Resource, M>
 where
     Resource: SoftDeleteResource + UpdateLabels,
     Resource::DynamicType: Hash + Eq + Clone + Default,
     Key: TryIntoObjectRef<Resource, Error = anyhow::Error> + Send + Sync + 'static,
     Value: TryFromResource<Resource, Error = Status> + Send + Sync + 'static,
+    M: ResourceManager<Resource> + Send + Sync + 'static,
 {
     type ReadError = Status;
 
@@ -124,12 +93,13 @@ where
 }
 
 #[async_trait]
-impl<Key, Value, Resource> CanDelete<Key, Value> for KubernetesRepository<Resource>
+impl<M, Key, Value, Resource> CanDelete<Key, Value> for KubernetesRepository<Resource, M>
 where
     Resource: SoftDeleteResource + UpdateLabels,
     Resource::DynamicType: Hash + Eq + Clone + Default,
     Key: TryIntoObjectRef<Resource, Error = anyhow::Error> + Send + Sync + Clone + 'static,
     Value: Send + Sync + 'static,
+    M: ResourceManager<Resource> + Send + Sync + 'static,
 {
     type DeleteError = Status;
 
@@ -137,7 +107,7 @@ where
         let object_ref = key.try_into_object_ref(self.resource_manager.namespace().clone())?;
         let start_time = Instant::now();
         loop {
-            let resource = self.resource_manager.force_get(&object_ref).await;
+            let resource = self.resource_manager.get_uncached(&object_ref).await;
             if let Err(e) = resource {
                 return Err(e);
             }
@@ -165,12 +135,13 @@ where
 }
 
 #[async_trait]
-impl<Key, Value, Resource> UpsertRepository<Key, Value> for KubernetesRepository<Resource>
+impl<Key, Value, Resource, M> UpsertRepository<Key, Value> for KubernetesRepository<Resource, M>
 where
     Resource: SoftDeleteResource + UpdateLabels,
     Resource::DynamicType: Hash + Eq + Clone + Default,
     Key: TryIntoObjectRef<Resource, Error = anyhow::Error> + Send + Sync + Clone + 'static,
     Value: ToResource<Resource> + TryFromResource<Resource, Error = Status> + Send + Sync + 'static,
+    M: ResourceManager<Resource> + Send + Sync + 'static,
 {
     type Error = Status;
 
