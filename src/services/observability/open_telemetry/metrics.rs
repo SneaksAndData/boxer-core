@@ -2,17 +2,16 @@ pub mod authorization_metric;
 mod into_metric_tag;
 pub mod provider;
 pub mod settings;
-pub mod token_accepted;
-pub mod token_attempt;
-pub mod token_forbidden;
-pub mod token_issued;
-pub mod token_lifetime;
-pub mod token_rejected;
-pub mod token_unauthorized;
+
+// COVERAGE: disabled since metric recorders should be tested in integration tests
+#[cfg_attr(coverage, coverage(off))]
+pub mod metric_recorders;
 
 use anyhow::Context;
 use opentelemetry::global;
 
+// COVERAGE: disabled since this is just initialization code
+#[cfg_attr(coverage, coverage(off))]
 pub fn init_metrics() -> anyhow::Result<()> {
     let exporter = opentelemetry_otlp::MetricExporter::builder()
         .with_tonic()

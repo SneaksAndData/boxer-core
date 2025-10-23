@@ -1,4 +1,7 @@
-use crate::contracts::dynamic_claims_collection::{DynamicClaimsCollection, get_claim, get_value};
+#[cfg(test)]
+mod tests;
+
+use crate::contracts::dynamic_claims_collection::DynamicClaims;
 use crate::contracts::internal_token::v1::{PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, VALIDATOR_SCHEMA_ID_KEY};
 use cedar_policy::{Entity, SchemaFragment};
 
@@ -10,14 +13,29 @@ pub struct BoxerClaims {
     pub principal: Entity,
 }
 
-impl TryFrom<&DynamicClaimsCollection> for BoxerClaims {
+pub trait ToBoxerClaims<T>
+where
+    T: DynamicClaims,
+{
+    type Error;
+    fn to_boxer_claims(&self) -> Result<BoxerClaims, Self::Error>;
+}
+
+impl<T> ToBoxerClaims<T> for T
+where
+    T: DynamicClaims,
+{
     type Error = anyhow::Error;
 
-    fn try_from(c: &DynamicClaimsCollection) -> Result<Self, Self::Error> {
-        let schema = get_value(c, SCHEMA_KEY).ok_or(anyhow::anyhow!("Missing schema"))?;
-        let principal = get_value(c, PRINCIPAL_KEY).ok_or(anyhow::anyhow!("Missing schema"))?;
-        let schema_id = get_claim(c, SCHEMA_ID_KEY).ok_or(anyhow::anyhow!("Missing schema_id"))?;
-        let validator_schema_id = get_claim(c, VALIDATOR_SCHEMA_ID_KEY).ok_or(anyhow::anyhow!("Missing schema_id"))?;
+    fn to_boxer_claims(&self) -> Result<BoxerClaims, Self::Error> {
+        let schema = self.get_value(SCHEMA_KEY).ok_or(anyhow::anyhow!("Missing schema"))?;
+        let principal = self.get_value(PRINCIPAL_KEY).ok_or(anyhow::anyhow!("Missing schema"))?;
+        let schema_id = self
+            .get_claim(SCHEMA_ID_KEY)
+            .ok_or(anyhow::anyhow!("Missing schema_id"))?;
+        let validator_schema_id = self
+            .get_claim(VALIDATOR_SCHEMA_ID_KEY)
+            .ok_or(anyhow::anyhow!("Missing schema_id"))?;
 
         Ok(BoxerClaims {
             schema: SchemaFragment::from_json_value(schema.clone())
