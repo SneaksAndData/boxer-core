@@ -4,7 +4,7 @@ pub mod soft_delete_resource;
 #[cfg(test)]
 mod tests;
 pub mod to_resource;
-mod try_from_resource;
+pub mod try_from_resource;
 pub mod try_into_object_ref;
 
 use crate::services::backends::kubernetes::kubernetes_repository::resource_manager::ResourceManager;
