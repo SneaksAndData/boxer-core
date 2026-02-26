@@ -1,7 +1,7 @@
-use crate::services::backends::kubernetes::kubernetes_resource_manager::object_owner_mark::ObjectOwnerMark;
-use crate::services::backends::kubernetes::repositories::schema_repository::schema_document::{
+use crate::services::backends::kubernetes::kubernetes_repository::schema_repository::schema_document::{
     SchemaDocument, SchemaDocumentSpec,
 };
+use crate::services::backends::kubernetes::kubernetes_resource_manager::object_owner_mark::ObjectOwnerMark;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use maplit::btreemap;
 

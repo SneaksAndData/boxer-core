@@ -5,6 +5,8 @@ use actix_web::dev::ServiceResponse;
 use actix_web::middleware::Next;
 use log::warn;
 
+// COVERAGE: Disable since the function is trivial
+#[cfg_attr(coverage, coverage(off))]
 pub async fn custom_error_logging(
     req: ServiceRequest,
     srv: Next<impl MessageBody>,

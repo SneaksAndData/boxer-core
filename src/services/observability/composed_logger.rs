@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use env_filter::{Builder, Filter};
 use log::{Log, SetLoggerError, set_boxed_logger, set_max_level};
 

@@ -1,4 +1,4 @@
-use crate::services::backends::kubernetes::repositories::SoftDeleteResource;
+use crate::services::backends::kubernetes::kubernetes_repository::soft_delete_resource::SoftDeleteResource;
 use kube::Api;
 use kube::runtime::reflector::{Lookup, ObjectRef};
 use serde::de::DeserializeOwned;

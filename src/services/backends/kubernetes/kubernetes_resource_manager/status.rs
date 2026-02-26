@@ -48,16 +48,7 @@ impl Display for Status {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Status::Conflict => write!(f, "Conflict error occurred"),
-            Status::NotOwned(details) => {
-                let owner = details.current_owner.as_deref().unwrap_or("unknown");
-                write!(
-                    f,
-                    "Owner conflict for resource '{}', namespace '{}'. Current owner: {}",
-                    details.object_name,
-                    details.object_namespace.as_deref().unwrap_or("unknown"),
-                    owner
-                )
-            }
+            Status::NotOwned(details) => write!(f, "Owner conflict: {}", details),
             Status::Other(e) => write!(f, "An error occurred: {}", e),
             Status::NotFound(details) => write!(f, "Resource not found: {}", details),
             Status::Deleted(details) => write!(f, "Resource was deleted not found: {}", details),

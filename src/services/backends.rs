@@ -1,4 +1,4 @@
-use crate::services::backends::kubernetes::repositories::schema_repository::SchemaRepository;
+use crate::services::backends::kubernetes::kubernetes_repository::schema_repository::SchemaRepository;
 use crate::services::service_provider::ServiceProvider;
 use async_trait::async_trait;
 use std::sync::Arc;

@@ -1,6 +1,8 @@
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
 
 impl From<Status> for actix_web::Error {
+    // COVERAGE: Disable since the function is trivial
+    #[cfg_attr(coverage, coverage(off))]
     fn from(err: Status) -> Self {
         match err {
             Status::Conflict => actix_web::error::ErrorConflict(err.to_string()),

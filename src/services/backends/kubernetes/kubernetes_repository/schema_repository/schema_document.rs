@@ -1,5 +1,5 @@
+use crate::services::backends::kubernetes::kubernetes_repository::SoftDeleteResource;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::UpdateLabels;
-use crate::services::backends::kubernetes::repositories::SoftDeleteResource;
 use anyhow::anyhow;
 use cedar_policy::SchemaFragment;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;

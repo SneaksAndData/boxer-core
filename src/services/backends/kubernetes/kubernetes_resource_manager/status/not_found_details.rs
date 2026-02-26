@@ -8,16 +8,6 @@ pub struct NotFoundDetails {
     pub resource_type: String,
 }
 
-impl NotFoundDetails {
-    pub fn new(name: String, namespace: Option<String>, resource_type: String) -> Self {
-        NotFoundDetails {
-            name,
-            namespace,
-            resource_type,
-        }
-    }
-}
-
 impl Display for NotFoundDetails {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let namespace = self.namespace.as_deref().unwrap_or("unknown");

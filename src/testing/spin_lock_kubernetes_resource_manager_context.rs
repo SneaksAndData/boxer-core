@@ -1,8 +1,8 @@
 use crate::services::backends::kubernetes::kubernetes_resource_manager::object_owner_mark::ObjectOwnerMark;
-use crate::services::backends::kubernetes::kubernetes_resource_manager::spin_lock::SpinLockKubernetesResourceManager;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::{
-    KubernetesResourceManagerConfig, UpdateLabels,
+    GenericKubernetesResourceManager, KubernetesResourceManagerConfig, UpdateLabels,
 };
+use crate::services::backends::kubernetes::kubernetes_resource_watcher::KubernetesResourceWatcher;
 use crate::services::backends::kubernetes::logging_update_handler::LoggingUpdateHandler;
 use crate::testing::api_client_context::ApiClientContext;
 use serde::Serialize;
@@ -13,17 +13,17 @@ use std::sync::Arc;
 use std::time::Duration;
 use test_context::AsyncTestContext;
 
-pub struct SpinLockKubernetesResourceManagerTestContext<R>
+pub struct GenericKubernetesResourceManagerTestContext<R>
 where
     R: kube::Resource + 'static,
     R::DynamicType: Hash + Eq,
 {
-    pub manager: SpinLockKubernetesResourceManager<R>,
+    pub manager: GenericKubernetesResourceManager<R>,
     pub config: KubernetesResourceManagerConfig,
     pub api_context: ApiClientContext<R>,
 }
 
-impl<R> AsyncTestContext for SpinLockKubernetesResourceManagerTestContext<R>
+impl<R> AsyncTestContext for GenericKubernetesResourceManagerTestContext<R>
 where
     R: kube::Resource + UpdateLabels + Clone + Debug + Serialize + DeserializeOwned + Send + Sync + 'static,
     R::DynamicType: Hash + Eq + Clone + Default,
@@ -38,11 +38,11 @@ where
             operation_timeout: Duration::from_secs(10),
         };
 
-        let manager = SpinLockKubernetesResourceManager::start(config.clone(), Arc::new(LoggingUpdateHandler))
+        let manager = GenericKubernetesResourceManager::start(config.clone(), Arc::new(LoggingUpdateHandler))
             .await
             .expect("Failed to start SpinLockKubernetesResourceManager");
 
-        SpinLockKubernetesResourceManagerTestContext {
+        GenericKubernetesResourceManagerTestContext {
             manager,
             config,
             api_context,

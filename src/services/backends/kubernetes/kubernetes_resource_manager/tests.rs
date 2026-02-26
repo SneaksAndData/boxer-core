@@ -1,8 +1,9 @@
-use crate::services::backends::kubernetes::repositories::schema_repository::schema_document::{
+use crate::services::backends::kubernetes::kubernetes_repository::resource_manager::ResourceManager;
+use crate::services::backends::kubernetes::kubernetes_repository::schema_repository::schema_document::{
     SchemaDocument, SchemaDocumentSpec,
 };
 use crate::testing::api_extensions::WaitForResource;
-use crate::testing::spin_lock_kubernetes_resource_manager_context::SpinLockKubernetesResourceManagerTestContext;
+use crate::testing::spin_lock_kubernetes_resource_manager_context::GenericKubernetesResourceManagerTestContext;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::runtime::reflector::ObjectRef;
 use maplit::btreemap;
@@ -30,9 +31,9 @@ fn create_object(name: &str, namespace: &str, resource_version: String) -> Schem
     }
 }
 
-#[test_context(SpinLockKubernetesResourceManagerTestContext<SchemaDocument>)]
+#[test_context(GenericKubernetesResourceManagerTestContext<SchemaDocument>)]
 #[tokio::test]
-async fn test_create_object(ctx: &mut SpinLockKubernetesResourceManagerTestContext<SchemaDocument>) {
+async fn test_create_object(ctx: &mut GenericKubernetesResourceManagerTestContext<SchemaDocument>) {
     // Arrange
     let name = "test-object";
     let resource = create_object(name, &ctx.config.namespace, Default::default());
@@ -47,9 +48,9 @@ async fn test_create_object(ctx: &mut SpinLockKubernetesResourceManagerTestConte
     assert!(ctx.config.owner_mark.is_owned(&created_object));
 }
 
-#[test_context(SpinLockKubernetesResourceManagerTestContext<SchemaDocument>)]
+#[test_context(GenericKubernetesResourceManagerTestContext<SchemaDocument>)]
 #[tokio::test]
-async fn test_patch_unexisted_object(ctx: &mut SpinLockKubernetesResourceManagerTestContext<SchemaDocument>) {
+async fn test_patch_unexisted_object(ctx: &mut GenericKubernetesResourceManagerTestContext<SchemaDocument>) {
     // Arrange
     let name = "test-object";
     let resource = create_object(name, &ctx.config.namespace, Default::default());
@@ -73,9 +74,9 @@ async fn test_patch_unexisted_object(ctx: &mut SpinLockKubernetesResourceManager
     assert_eq!(operation_status, "Conflict error occurred");
 }
 
-#[test_context(SpinLockKubernetesResourceManagerTestContext<SchemaDocument>)]
+#[test_context(GenericKubernetesResourceManagerTestContext<SchemaDocument>)]
 #[tokio::test]
-async fn test_get_object(ctx: &mut SpinLockKubernetesResourceManagerTestContext<SchemaDocument>) {
+async fn test_get_object(ctx: &mut GenericKubernetesResourceManagerTestContext<SchemaDocument>) {
     // Arrange
     let name = "test-object";
     let resource = create_object(name, &ctx.config.namespace, Default::default());

@@ -1,3 +1,5 @@
+#[cfg(test)]
+mod tests;
 pub mod to_audit_record;
 
 use crate::services::audit::AuditService;
