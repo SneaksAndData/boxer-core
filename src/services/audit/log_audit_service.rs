@@ -1,10 +1,10 @@
-use crate::services::audit::AuditService;
 use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
 use crate::services::audit::events::resource_delete_audit_event::ResourceDeleteAuditEvent;
 use crate::services::audit::events::resource_modification_audit_event::{
     ModificationResult, ResourceModificationAuditEvent,
 };
 use crate::services::audit::events::token_validation_event::TokenValidationEvent;
+use crate::services::audit::AuditService;
 use anyhow::Result;
 
 pub struct LogAuditService;
@@ -98,7 +98,8 @@ impl AuditService for LogAuditService {
             id = event.token_id.as_str(),
             result:serde = event.result,
             token_type = event.token_type.as_str(),
-            reason_errors:serde = event.reason_errors;
+            reason_errors:serde = event.reason_errors,
+            metadata:serde = event.token_metadata;
 
             // The log message
             "Boxer token validation: {:?}/{:?}", event.token_type, event.token_id);

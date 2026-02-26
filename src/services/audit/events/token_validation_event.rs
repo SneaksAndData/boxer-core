@@ -9,7 +9,8 @@ pub struct TokenValidationEvent {
     pub token_metadata: Option<TokenMetadata>,
 }
 
-#[derive(Deserialize)]
+#[allow(dead_code)]
+#[derive(Deserialize, Serialize)]
 pub struct TokenMetadata {
     exp: String,
     nbf: String,
