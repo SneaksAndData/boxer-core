@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 pub struct TokenValidationEvent {
@@ -6,6 +6,16 @@ pub struct TokenValidationEvent {
     pub result: TokenValidationResult,
     pub reason_errors: HashSet<String>,
     pub token_type: String,
+    pub token_metadata: Option<TokenMetadata>,
+}
+
+#[derive(Deserialize)]
+pub struct TokenMetadata {
+    exp: String,
+    nbf: String,
+    sub: String,
+    iss: String,
+    aud: String,
 }
 
 impl TokenValidationEvent {
@@ -16,16 +26,19 @@ impl TokenValidationEvent {
             result: make_result(is_successful),
             reason_errors: details,
             token_type: "internal".to_string(),
+            token_metadata: None,
         }
     }
 
     pub fn external(token: &str, is_successful: bool, details: HashSet<String>) -> Self {
+        let metadata = jsonwebtoken::dangerous::insecure_decode::<TokenMetadata>(token);
         let token_hash = md5::compute(token);
         Self {
             token_id: format!("md5:{:x}", token_hash),
             result: make_result(is_successful),
             reason_errors: details,
             token_type: "external".to_string(),
+            token_metadata: metadata.ok().map(|data| data.claims),
         }
     }
 
@@ -35,6 +48,7 @@ impl TokenValidationEvent {
             result: make_result(is_successful),
             reason_errors: details,
             token_type: "external".to_string(),
+            token_metadata: None,
         }
     }
 }
