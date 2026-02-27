@@ -1,4 +1,3 @@
-use log::warn;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -34,7 +33,6 @@ impl TokenValidationEvent {
 
     pub fn external(token: &str, is_successful: bool, details: HashSet<String>) -> Self {
         let metadata = jsonwebtoken::dangerous::insecure_decode::<TokenMetadata>(token);
-        warn!("Decoded token metadata: {:?}", metadata);
         let token_hash = md5::compute(token);
         Self {
             token_id: format!("md5:{:x}", token_hash),
