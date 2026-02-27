@@ -12,11 +12,11 @@ pub struct TokenValidationEvent {
 #[allow(dead_code)]
 #[derive(Deserialize, Serialize)]
 pub struct TokenMetadata {
-    exp: String,
-    nbf: String,
-    sub: String,
-    iss: String,
-    aud: String,
+    exp: Option<String>,
+    nbf: Option<String>,
+    sub: Option<String>,
+    iss: Option<String>,
+    aud: Option<String>,
 }
 
 impl TokenValidationEvent {
