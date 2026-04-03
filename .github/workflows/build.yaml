@@ -26,7 +26,7 @@ jobs:
       # We use nightly build for code coverage since we use the coverage(off) attribute that is
       # only available in nightly builds.
       - name: Install minimal stable with clippy and rustfmt
-        uses: actions-rust-lang/setup-rust-toolchain@v1.15.0
+        uses: actions-rust-lang/setup-rust-toolchain@v1.15.2
         with:
           toolchain: nightly
           components: rustfmt, clippy
