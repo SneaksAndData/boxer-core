@@ -24,7 +24,7 @@ where
     R::DynamicType: Hash + Eq + Clone + Default,
     H: ResourceUpdateHandler<R> + Send + Sync + 'static,
 {
-    async fn start(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<Self>;
+    async fn start(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<(Self, tokio::sync::oneshot::Receiver<()>)>;
 
     fn stop(&self) -> anyhow::Result<()>;
 }

@@ -28,7 +28,6 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio;
 
 pub trait UpdateLabels: Resource<Scope = NamespaceResourceScope> {
     fn update_labels(self, custom_labels: &mut BTreeMap<String, String>) -> Self;
@@ -41,7 +40,6 @@ pub struct KubernetesResourceManagerConfig {
     pub kubeconfig: kube::Config,
     pub owner_mark: ObjectOwnerMark,
     pub operation_timeout: Duration,
-    pub readiness_rx: tokio::sync::watch::Receiver<bool>,
 }
 
 pub struct GenericKubernetesResourceManager<R>
@@ -54,7 +52,6 @@ where
     api: Api<R>,
     namespace: String,
     owner_mark: ObjectOwnerMark,
-    readiness_rx: tokio::sync::watch::Receiver<bool>,
 }
 
 impl<S> GenericKubernetesResourceManager<S>
@@ -68,7 +65,6 @@ where
         api: Api<S>,
         namespace: String,
         owner_mark: ObjectOwnerMark,
-        readiness_rx: tokio::sync::watch::Receiver<bool>,
     ) -> Self {
         GenericKubernetesResourceManager {
             reader,
@@ -76,7 +72,6 @@ where
             api,
             namespace,
             owner_mark,
-            readiness_rx,
         }
     }
 
@@ -144,7 +139,7 @@ where
     S::DynamicType: Hash + Eq + Clone + Default,
     H: ResourceUpdateHandler<S> + Send + Sync + 'static,
 {
-    async fn start(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<Self>
+    async fn start(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<(Self, tokio::sync::oneshot::Receiver<()>)>
     where
         H: ResourceUpdateHandler<S> + Send + Sync + 'static,
     {
@@ -152,7 +147,7 @@ where
         let api: Api<S> = Api::namespaced(client.clone(), config.namespace.as_str());
         let stream = watcher(api.clone(), (&config.owner_mark).into());
         let (reader, writer) = reflector::store();
-        let (tx, rx) = tokio::sync::watch::channel(false);
+        let (readiness_tx, readiness_rx) = tokio::sync::oneshot::channel::<()>();
 
         let reflector = reflector(writer, stream)
             .default_backoff()
@@ -166,16 +161,17 @@ where
 
         let handle = tokio::spawn(reflector);
         reader.wait_until_ready().await?;
-        // TODO:
-        let _ = tx.send(true);
+        let _ = readiness_tx.send(());
 
-        Ok(GenericKubernetesResourceManager::new(
-            reader,
-            handle,
-            api,
-            config.namespace,
-            config.owner_mark,
-            rx,
+        Ok((
+            GenericKubernetesResourceManager::new(
+                reader,
+                handle,
+                api,
+                config.namespace,
+                config.owner_mark,
+            ),
+            readiness_rx,
         ))
     }
 

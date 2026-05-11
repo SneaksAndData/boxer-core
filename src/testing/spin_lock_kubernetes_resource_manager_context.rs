@@ -12,7 +12,6 @@ use std::hash::Hash;
 use std::sync::Arc;
 use std::time::Duration;
 use test_context::AsyncTestContext;
-use tokio;
 
 pub struct GenericKubernetesResourceManagerTestContext<R>
 where
@@ -31,18 +30,15 @@ where
 {
     async fn setup() -> Self {
         let api_context: ApiClientContext<R> = ApiClientContext::setup().await;
-        let (tx, rx) = tokio::sync::watch::channel(false);
-        let _ = tx.send(true);
 
         let config = KubernetesResourceManagerConfig {
             namespace: api_context.namespace().to_string(),
             kubeconfig: api_context.config().clone(),
             owner_mark: ObjectOwnerMark::new("boxer.io", "unit-tests"),
             operation_timeout: Duration::from_secs(10),
-            readiness_rx: rx,
         };
 
-        let manager = GenericKubernetesResourceManager::start(config.clone(), Arc::new(LoggingUpdateHandler))
+        let (manager, _readiness_rx) = GenericKubernetesResourceManager::start(config.clone(), Arc::new(LoggingUpdateHandler))
             .await
             .expect("Failed to start SpinLockKubernetesResourceManager");
 
