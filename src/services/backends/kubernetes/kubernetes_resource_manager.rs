@@ -20,7 +20,7 @@ use kube::core::ErrorResponse;
 use kube::runtime::reflector::{ObjectRef, Store};
 use kube::runtime::{WatchStreamExt, reflector, watcher};
 use kube::{Api, Client, Resource};
-use log::debug;
+use log::{debug, info, warn};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::collections::BTreeMap;
@@ -161,9 +161,17 @@ where
             });
 
         let handle = tokio::spawn(reflector);
+        let resource_type = S::kind(&S::DynamicType::default()).to_string();
         tokio::spawn(async move {
-            if reader_clone.wait_until_ready().await.is_ok() {
-                let _ = readiness_tx.send(());
+            info!("Waiting for resource manager readiness for {resource_type}");
+            match reader_clone.wait_until_ready().await {
+                Ok(()) => {
+                    info!("Resource manager for {resource_type} is ready");
+                    let _ = readiness_tx.send(());
+                }
+                Err(err) => {
+                    warn!("Resource manager for {resource_type} failed to become ready: {err}");
+                }
             }
         });
 
