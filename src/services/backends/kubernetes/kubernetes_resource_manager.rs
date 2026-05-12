@@ -149,6 +149,7 @@ where
         let (reader, writer) = reflector::store();
         let (readiness_tx, readiness_rx) = tokio::sync::oneshot::channel::<()>();
 
+        let reader_clone = reader.clone();
         let reflector = reflector(writer, stream)
             .default_backoff()
             .touched_objects()
@@ -160,8 +161,11 @@ where
             });
 
         let handle = tokio::spawn(reflector);
-        reader.wait_until_ready().await?;
-        let _ = readiness_tx.send(());
+        tokio::spawn(async move {
+            if reader_clone.wait_until_ready().await.is_ok() {
+                let _ = readiness_tx.send(());
+            }
+        });
 
         Ok((
             GenericKubernetesResourceManager::new(
