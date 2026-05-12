@@ -1,6 +1,9 @@
-use actix_web::{web, HttpResponse, Responder};
-use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(test)]
+mod tests;
+
+use actix_web::{HttpResponse, Responder, web};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::Mutex;
 use tokio::sync::oneshot::Receiver;
 
