@@ -139,7 +139,10 @@ where
     S::DynamicType: Hash + Eq + Clone + Default,
     H: ResourceUpdateHandler<S> + Send + Sync + 'static,
 {
-    async fn start(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<(Self, tokio::sync::oneshot::Receiver<()>)>
+    async fn start(
+        config: KubernetesResourceManagerConfig,
+        update_handler: Arc<H>,
+    ) -> anyhow::Result<(Self, tokio::sync::oneshot::Receiver<()>)>
     where
         H: ResourceUpdateHandler<S> + Send + Sync + 'static,
     {
@@ -176,13 +179,7 @@ where
         });
 
         Ok((
-            GenericKubernetesResourceManager::new(
-                reader,
-                handle,
-                api,
-                config.namespace,
-                config.owner_mark,
-            ),
+            GenericKubernetesResourceManager::new(reader, handle, api, config.namespace, config.owner_mark),
             readiness_rx,
         ))
     }
