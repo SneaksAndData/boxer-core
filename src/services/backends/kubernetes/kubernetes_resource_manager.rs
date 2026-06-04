@@ -20,7 +20,7 @@ use kube::core::ErrorResponse;
 use kube::runtime::reflector::{ObjectRef, Store};
 use kube::runtime::{WatchStreamExt, reflector, watcher};
 use kube::{Api, Client, Resource};
-use log::debug;
+use log::{debug, info, warn};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::collections::BTreeMap;
@@ -139,7 +139,10 @@ where
     S::DynamicType: Hash + Eq + Clone + Default,
     H: ResourceUpdateHandler<S> + Send + Sync + 'static,
 {
-    async fn start(config: KubernetesResourceManagerConfig, update_handler: Arc<H>) -> anyhow::Result<Self>
+    async fn start(
+        config: KubernetesResourceManagerConfig,
+        update_handler: Arc<H>,
+    ) -> anyhow::Result<(Self, tokio::sync::oneshot::Receiver<()>)>
     where
         H: ResourceUpdateHandler<S> + Send + Sync + 'static,
     {
@@ -147,7 +150,9 @@ where
         let api: Api<S> = Api::namespaced(client.clone(), config.namespace.as_str());
         let stream = watcher(api.clone(), (&config.owner_mark).into());
         let (reader, writer) = reflector::store();
+        let (readiness_tx, readiness_rx) = tokio::sync::oneshot::channel::<()>();
 
+        let reader_clone = reader.clone();
         let reflector = reflector(writer, stream)
             .default_backoff()
             .touched_objects()
@@ -159,14 +164,23 @@ where
             });
 
         let handle = tokio::spawn(reflector);
-        reader.wait_until_ready().await?;
+        let resource_type = S::kind(&S::DynamicType::default()).to_string();
+        tokio::spawn(async move {
+            info!("Waiting for resource manager readiness for {resource_type}");
+            match reader_clone.wait_until_ready().await {
+                Ok(()) => {
+                    info!("Resource manager for {resource_type} is ready");
+                    let _ = readiness_tx.send(());
+                }
+                Err(err) => {
+                    warn!("Resource manager for {resource_type} failed to become ready: {err}");
+                }
+            }
+        });
 
-        Ok(GenericKubernetesResourceManager::new(
-            reader,
-            handle,
-            api,
-            config.namespace,
-            config.owner_mark,
+        Ok((
+            GenericKubernetesResourceManager::new(reader, handle, api, config.namespace, config.owner_mark),
+            readiness_rx,
         ))
     }
 
