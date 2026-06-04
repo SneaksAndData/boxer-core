@@ -3,6 +3,10 @@ use crate::services::audit::events::authorization_audit_event::Reason;
 use cedar_policy::Decision;
 use serde::{Deserialize, Serialize};
 
+/// [`ChainedAuditEvent`] represents the information collected during the processing of a
+/// request that is relevant for auditing purposes. It includes details about the external and
+/// internal token validation, the action being performed, the actor, the resource, the
+/// decision made by the authorization engine, and any reasons for that decision.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainedAuditEvent {
     pub external_token: Option<TokenAuditEvent>,
@@ -26,7 +30,7 @@ impl ChainedAuditEvent {
 }
 
 impl ChainedAuditEvent {
-    pub fn new() -> ChainedAuditEvent {
+    pub fn empty() -> ChainedAuditEvent {
         ChainedAuditEvent {
             external_token: None,
             internal_token: None,
