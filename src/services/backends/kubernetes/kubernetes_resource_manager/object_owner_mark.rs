@@ -1,7 +1,8 @@
+#[cfg(test)]
 mod tests;
 
-use kube::Resource;
 use kube::runtime::watcher::Config;
+use kube::Resource;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 
