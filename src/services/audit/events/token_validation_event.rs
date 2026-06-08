@@ -54,7 +54,7 @@ impl TokenValidationEvent {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum TokenValidationResult {
     Allow,
