@@ -20,16 +20,6 @@ pub struct ChainedAuditEvent {
 }
 
 impl ChainedAuditEvent {
-    pub(crate) fn set_external_token_id(&mut self, token: &str) {
-        self.external_token = Some(TokenAuditEvent::external().with_token_id(token));
-    }
-
-    pub(crate) fn set_external_token_error(&mut self, error: actix_web::Error) {
-        self.external_token = Some(TokenAuditEvent::external().failure(error));
-    }
-}
-
-impl ChainedAuditEvent {
     pub fn empty() -> ChainedAuditEvent {
         ChainedAuditEvent {
             external_token: None,

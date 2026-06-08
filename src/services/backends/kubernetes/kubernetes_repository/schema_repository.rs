@@ -1,11 +1,12 @@
 // tests module is used to test the repository
 #[cfg(test)]
-mod tests;
-
-pub mod schema_document;
 mod test_reduced_schema;
 #[cfg(test)]
 mod test_schema;
+#[cfg(test)]
+mod tests;
+
+pub mod schema_document;
 
 use crate::services::audit::audit_facade::to_audit_record::ToAuditRecord;
 use crate::services::backends::kubernetes::kubernetes_repository::schema_repository::schema_document::{
@@ -13,8 +14,8 @@ use crate::services::backends::kubernetes::kubernetes_repository::schema_reposit
 };
 use crate::services::backends::kubernetes::kubernetes_repository::try_from_resource::TryFromResource;
 use crate::services::backends::kubernetes::kubernetes_repository::{KubernetesRepository, ToResource};
-use crate::services::backends::kubernetes::kubernetes_resource_manager::GenericKubernetesResourceManager;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::GenericKubernetesResourceManager;
 use crate::services::base::upsert_repository::UpsertRepositoryWithDelete;
 use cedar_policy::SchemaFragment;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
