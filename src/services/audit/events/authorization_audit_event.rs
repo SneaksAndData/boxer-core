@@ -1,5 +1,5 @@
 use cedar_policy::{Decision, Diagnostics, EntityUid, Response};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 #[derive(Serialize)]
@@ -11,7 +11,7 @@ pub struct AuthorizationAuditEvent {
     pub reason: Reason,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Reason {
     pub policies: HashSet<String>,
     pub errors: HashSet<String>,
