@@ -14,8 +14,8 @@ use crate::services::backends::kubernetes::kubernetes_repository::schema_reposit
 };
 use crate::services::backends::kubernetes::kubernetes_repository::try_from_resource::TryFromResource;
 use crate::services::backends::kubernetes::kubernetes_repository::{KubernetesRepository, ToResource};
-use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::GenericKubernetesResourceManager;
+use crate::services::backends::kubernetes::kubernetes_resource_manager::status::Status;
 use crate::services::base::upsert_repository::UpsertRepositoryWithDelete;
 use cedar_policy::SchemaFragment;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
