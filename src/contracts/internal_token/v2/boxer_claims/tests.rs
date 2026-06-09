@@ -2,7 +2,7 @@ use super::*;
 use crate::contracts::dynamic_claims_collection::DynamicClaims;
 use crate::contracts::internal_token::v2::{PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, VALIDATOR_SCHEMA_ID_KEY};
 use pretty_assertions::assert_eq;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::collections::HashMap;
 
 #[test]
@@ -47,7 +47,11 @@ fn test_missing_validator_schema_id() {
 fn test_invalid_schema() {
     let mc = MockClaims::base().with_value(SCHEMA_KEY, json!("not-an-object"));
     let err = mc.to_boxer_claims().unwrap_err();
-    assert!(err.to_string().contains("Invalid schema"));
+    assert!(
+        err.to_string().contains("Invalid schema"),
+        "Error was: {}",
+        err.to_string()
+    );
 }
 
 #[test]
@@ -86,10 +90,12 @@ impl MockClaims {
                 "parents": []
             }),
         );
+        values.insert(AUDIT_EVENT, json!({"event": "login"}));
 
         let mut claims = HashMap::new();
         claims.insert(SCHEMA_ID_KEY, "schema-v1".to_string());
         claims.insert(VALIDATOR_SCHEMA_ID_KEY, "validator-schema-v1".to_string());
+        (claims).insert(AUDIT_EVENT, json!({"event": "login"}).to_string());
 
         Self { values, claims }
     }
