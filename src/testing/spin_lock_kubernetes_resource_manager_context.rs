@@ -38,9 +38,11 @@ where
             operation_timeout: Duration::from_secs(10),
         };
 
-        let manager = GenericKubernetesResourceManager::start(config.clone(), Arc::new(LoggingUpdateHandler))
-            .await
-            .expect("Failed to start SpinLockKubernetesResourceManager");
+        let (manager, readiness_rx) =
+            GenericKubernetesResourceManager::start(config.clone(), Arc::new(LoggingUpdateHandler))
+                .await
+                .expect("Failed to start SpinLockKubernetesResourceManager");
+        readiness_rx.await.expect("Failed to receive readiness signal");
 
         GenericKubernetesResourceManagerTestContext {
             manager,
