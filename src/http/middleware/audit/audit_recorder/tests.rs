@@ -1,24 +1,24 @@
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
 use crate::http::middleware::audit::audit_recorder::audit_recorder_factory::AuditRecorderFactory;
+use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
+use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
-use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
-use crate::services::audit::events::resource_delete_audit_event::ResourceDeleteAuditEvent;
-use crate::services::audit::events::resource_modification_audit_event::ResourceModificationAuditEvent;
-use crate::services::audit::events::token_validation_event::TokenValidationEvent;
-use crate::services::audit::AuditService;
+use actix_web::body::BoxBody;
+use actix_web::dev::Service;
 use actix_web::dev::ServiceResponse;
 use actix_web::error::ErrorInternalServerError;
-use actix_web::{test, web, App, Error, HttpResponse};
+use actix_web::{test, web, App, Error, HttpMessage, HttpResponse};
 use anyhow::Result;
 use mockall::mock;
+use pretty_assertions::assert_matches;
 use std::sync::Arc;
 
 #[actix_web::test]
 async fn test_audit_success() {
     // Arrange
-    let mut audit = MockAuditService::new();
-    audit.expect_audit().returning(|_event, _final| ());
+    let mut audit = MockAuditWriter::new();
+    audit.expect_write().returning(|_| ());
 
     let chain = App::new()
         .wrap(AuditRecorderFactory::<MockAuditEventSource>::new(Arc::new(audit)))
@@ -36,8 +36,8 @@ async fn test_audit_success() {
 #[actix_web::test]
 async fn test_audit_error() {
     // Arrange
-    let mut audit = MockAuditService::new();
-    audit.expect_audit().returning(|_event, _final| ());
+    let mut audit = MockAuditWriter::new();
+    audit.expect_write().returning(|_| ());
 
     let chain = App::new()
         .wrap(AuditRecorderFactory::<MockAuditEventSource>::new(Arc::new(audit)))
@@ -53,6 +53,92 @@ async fn test_audit_error() {
     let _ = test::call_service(&service, request).await;
 
     // Expectations are verified automatically when `mock_audit` is dropped at the end of the scope.
+}
+
+#[actix_web::test]
+#[should_panic(expected = "Error without audit should not reach audit recorder middleware: \"Some error\"")]
+async fn test_custom_error_without_error_event() {
+    // Arrange
+    let mut audit = MockAuditWriter::new();
+    audit.expect_write().returning(|_| ());
+
+    let chain = App::new()
+        .wrap_fn(|_req, _srv| {
+            std::future::ready(Err::<ServiceResponse<BoxBody>, _>(ErrorInternalServerError(
+                "Some error",
+            )))
+        })
+        .wrap(AuditRecorderFactory::<MockAuditEventSource>::new(Arc::new(audit)))
+        .default_service(web::to(|| async move { HttpResponse::Ok().finish() }));
+
+    let service = test::init_service(chain).await;
+    let request = test::TestRequest::get().uri("/any-route").to_request();
+
+    // Act
+
+    let _: ServiceResponse<BoxBody> = test::call_service(&service, request).await;
+
+    // The code above should panic.
+}
+
+#[actix_web::test]
+#[should_panic(expected = "Attempt to wrap an error without an audit event")]
+async fn test_custom_error_panic_request_without_event() {
+    // Arrange
+    let mut audit = MockAuditWriter::new();
+    audit.expect_write().returning(|_| ());
+
+    let chain = App::new()
+        .wrap_fn(|req, _src| {
+            let error = AuditedError::wrap_req(req, ErrorInternalServerError("Some error"));
+            std::future::ready(Err::<ServiceResponse<BoxBody>, _>(actix_web::Error::from(error)))
+        })
+        .wrap(AuditRecorderFactory::<MockAuditEventSource>::new(Arc::new(audit)))
+        .default_service(web::to(|| async move { HttpResponse::Ok().finish() }));
+
+    let service = test::init_service(chain).await;
+    let request = test::TestRequest::get().uri("/any-route").to_request();
+
+    // Act
+    let _: ServiceResponse<BoxBody> = test::call_service(&service, request).await;
+
+    // The code above should panic.
+}
+
+#[actix_web::test]
+async fn test_custom_error_recording() {
+    // Arrange
+    let mut audit = MockAuditWriter::new();
+    audit.expect_write().returning(|_| ());
+
+    let chain = App::new()
+        .wrap_fn(|req, _src| {
+            req.extensions_mut()
+                .insert(AuditEvent::Intermediate(ChainedAuditEvent::empty()));
+            let error = AuditedError::wrap_req(req, ErrorInternalServerError("Some error"));
+            std::future::ready(Err::<ServiceResponse<BoxBody>, _>(actix_web::Error::from(error)))
+        })
+        .wrap(AuditRecorderFactory::<MockAuditEventSource>::new(Arc::new(audit)))
+        .default_service(web::to(|| async move { HttpResponse::Ok().finish() }));
+
+    let service = test::init_service(chain).await;
+    let request = test::TestRequest::get().uri("/any-route").to_request();
+
+    // Act
+    let result = test::try_call_service(&service, request).await;
+
+    // Assert
+    let err = result.expect_err("Expected service call to fail with an error");
+    let audited_err = err
+        .as_error::<AuditedError>()
+        .expect("Expected error to be downcastable to AuditedError");
+    assert_matches!(
+        audited_err,
+        AuditedError {
+            event: AuditEvent::Intermediate(_),
+            ..
+        }
+    );
 }
 
 mock! {
@@ -76,13 +162,9 @@ impl<B> TryFrom<&ServiceResponse<B>> for MockAuditEventSource {
 
 mock! {
 
-    pub AuditService {}
+    pub AuditWriter {}
 
-    impl AuditService for AuditService {
-        fn audit(&self, event: AuditEvent, success: bool);
-        fn record_authorization(&self, event: AuthorizationAuditEvent) -> Result<()>;
-        fn record_resource_deletion(&self, event: ResourceDeleteAuditEvent) -> Result<()>;
-        fn record_resource_modification(&self, event: ResourceModificationAuditEvent) -> Result<()>;
-        fn record_token_validation(&self, event: TokenValidationEvent) -> Result<()>;
+    impl AuditWriter for AuditWriter {
+        fn write(&self, event: AuditEvent);
     }
 }
