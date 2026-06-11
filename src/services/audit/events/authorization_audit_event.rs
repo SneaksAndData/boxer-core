@@ -2,7 +2,7 @@ use cedar_policy::{Decision, Diagnostics, EntityUid, Response};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AuthorizationAuditEvent {
     pub action: String,
     pub actor: String,
