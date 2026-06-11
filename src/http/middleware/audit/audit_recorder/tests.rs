@@ -126,6 +126,8 @@ async fn test_custom_error_recording() {
 
     // Act
     let result = test::try_call_service(&service, request).await;
+
+    // Assert
     let err = result.expect_err("Expected service call to fail with an error");
     let audited_err = err
         .as_error::<AuditedError>()
@@ -137,8 +139,6 @@ async fn test_custom_error_recording() {
             ..
         }
     );
-
-    // The code above should panic.
 }
 
 mock! {
