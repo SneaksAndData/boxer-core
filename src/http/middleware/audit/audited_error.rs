@@ -1,0 +1,62 @@
+use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
+use crate::services::audit::chained::audit_event::AuditEvent;
+use actix_web::dev::ServiceRequest;
+use actix_web::error::InternalError;
+use actix_web::http::StatusCode;
+use actix_web::{HttpMessage, ResponseError};
+use std::error::Error;
+use std::fmt::{Debug, Display, Formatter};
+
+/// [`AuditedError`] is a wrapper for any error that implements `ResponseError` and carries
+/// an associated [`AuditEvent`] that can be recorded by the audit middleware.
+#[derive(Debug)]
+pub struct AuditedError {
+    pub event: AuditEvent,
+    cause: Box<dyn ResponseError>,
+}
+
+impl AuditedError {
+    /// Wraps a given `ResponseError` into an `AuditedError`, extracting the associated
+    /// `AuditEvent` from the error's response extensions.
+    pub fn wrap(cause: impl ResponseError + 'static) -> AuditedError {
+        let event = cause
+            .error_response()
+            .extensions()
+            .get::<AuditEvent>()
+            .expect("Attempt to wrap an error without an audit event")
+            .clone();
+        AuditedError {
+            event,
+            cause: Box::new(cause),
+        }
+    }
+
+    /// Similar to `wrap` but extracts the `AuditEvent` from the request's extensions instead of
+    /// the error's response.
+    pub fn wrap_req(request: ServiceRequest, cause: impl Error + 'static) -> AuditedError {
+        let event = request
+            .extensions()
+            .get::<AuditEvent>()
+            .expect("Attempt to wrap an error without an audit event")
+            .clone();
+        AuditedError {
+            event,
+            cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
+        }
+    }
+}
+
+/// The `Display` implementation for `AuditedError` simply formats the contained `AuditEvent`
+/// for debugging purposes.
+impl Display for AuditedError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{:?}", self.event))
+    }
+}
+
+/// The `ResponseError` implementation for `AuditedError` delegates to the underlying cause's
+impl ResponseError for AuditedError {
+    fn error_response(&self) -> actix_web::HttpResponse {
+        self.cause.error_response()
+    }
+}
