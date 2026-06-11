@@ -2,12 +2,12 @@
 mod tests;
 mod token_metadata;
 
+use crate::contracts::internal_token::API_VERSION_KEY;
 use crate::contracts::internal_token::v2::internal_token::token_metadata::TokenMetadata;
 use crate::contracts::internal_token::v2::{
     AUDIT_EVENT, BOXER_AUDIENCE, BOXER_ISSUER, IDENTITY_PROVIDER_KEY, PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY,
     USER_ID_KEY, VALIDATOR_SCHEMA_ID_KEY,
 };
-use crate::contracts::internal_token::API_VERSION_KEY;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use cedar_policy::{Entity, SchemaFragment};
 use josekit::jwt::JwtPayload;
