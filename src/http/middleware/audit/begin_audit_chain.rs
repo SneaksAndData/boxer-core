@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests;
-mod try_create_audit_context;
+pub mod try_create_audit_context;
 
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
