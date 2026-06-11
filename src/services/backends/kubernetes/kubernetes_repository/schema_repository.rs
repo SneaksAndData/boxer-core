@@ -1,11 +1,12 @@
 // tests module is used to test the repository
 #[cfg(test)]
-mod tests;
-
-pub mod schema_document;
 mod test_reduced_schema;
 #[cfg(test)]
 mod test_schema;
+#[cfg(test)]
+mod tests;
+
+pub mod schema_document;
 
 use crate::services::audit::audit_facade::to_audit_record::ToAuditRecord;
 use crate::services::backends::kubernetes::kubernetes_repository::schema_repository::schema_document::{
