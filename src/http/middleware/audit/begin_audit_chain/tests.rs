@@ -2,7 +2,7 @@ use crate::http::middleware::audit::begin_audit_chain::begin_audit_chain;
 use crate::http::middleware::audit::begin_audit_chain::try_create_audit_context::TryCreateAuditContext;
 use actix_web::dev::ServiceRequest;
 use actix_web::middleware::from_fn;
-use actix_web::{test, web, App, HttpResponse};
+use actix_web::{App, HttpResponse, test, web};
 use mockall::mock;
 
 #[actix_web::test]

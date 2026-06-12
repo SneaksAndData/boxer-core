@@ -5,10 +5,9 @@ use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use actix_web::body::BoxBody;
-use actix_web::dev::Service;
 use actix_web::dev::ServiceResponse;
 use actix_web::error::ErrorInternalServerError;
-use actix_web::{test, web, App, Error, HttpMessage, HttpResponse};
+use actix_web::{App, Error, HttpMessage, HttpResponse, test, web};
 use anyhow::Result;
 use mockall::mock;
 use pretty_assertions::assert_matches;
@@ -90,8 +89,8 @@ async fn test_custom_error_panic_request_without_event() {
 
     let chain = App::new()
         .wrap_fn(|req, _src| {
-            let error = AuditedError::wrap_req(req, ErrorInternalServerError("Some error"));
-            std::future::ready(Err::<ServiceResponse<BoxBody>, _>(actix_web::Error::from(error)))
+            let error = AuditedError::from_request(&req, ErrorInternalServerError("Some error"));
+            std::future::ready(Err::<ServiceResponse<BoxBody>, _>(Error::from(error)))
         })
         .wrap(AuditRecorderFactory::<MockAuditEventSource>::new(Arc::new(audit)))
         .default_service(web::to(|| async move { HttpResponse::Ok().finish() }));
@@ -115,8 +114,8 @@ async fn test_custom_error_recording() {
         .wrap_fn(|req, _src| {
             req.extensions_mut()
                 .insert(AuditEvent::Intermediate(ChainedAuditEvent::empty()));
-            let error = AuditedError::wrap_req(req, ErrorInternalServerError("Some error"));
-            std::future::ready(Err::<ServiceResponse<BoxBody>, _>(actix_web::Error::from(error)))
+            let error = AuditedError::from_request(&req, ErrorInternalServerError("Some error"));
+            std::future::ready(Err::<ServiceResponse<BoxBody>, _>(Error::from(error)))
         })
         .wrap(AuditRecorderFactory::<MockAuditEventSource>::new(Arc::new(audit)))
         .default_service(web::to(|| async move { HttpResponse::Ok().finish() }));
