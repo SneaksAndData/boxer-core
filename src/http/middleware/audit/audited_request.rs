@@ -13,7 +13,7 @@ use actix_web::HttpMessage;
 /// This struct is used to ensure that the audit context is properly initialized and to prevent
 /// multiple initializations of the audit context for the same request.
 #[derive(Debug)]
-struct AuditedRequest(ServiceRequest);
+pub struct AuditedRequest(ServiceRequest);
 
 /// Implementing `Into<ServiceRequest>` allows us to easily convert an `AuditedRequest` back into
 /// a `ServiceRequest` when passing it to the next middleware or handler in the chain.
