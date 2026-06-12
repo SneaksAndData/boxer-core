@@ -4,16 +4,16 @@ mod tests;
 use super::begin_audit_chain::try_create_audit_context::TryCreateAuditContext;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
-use actix_web::HttpMessage;
 
 /// [`AuditedRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
 /// processed by the `begin_audit_chain` middleware and has an audit context initialized.
 /// This struct is used to ensure that the audit context is properly initialized and to prevent
 /// multiple initializations of the audit context for the same request.
 #[derive(Debug)]
-pub struct AuditedRequest(ServiceRequest);
+struct AuditedRequest(ServiceRequest);
 
 /// Implementing `Into<ServiceRequest>` allows us to easily convert an `AuditedRequest` back into
 /// a `ServiceRequest` when passing it to the next middleware or handler in the chain.
