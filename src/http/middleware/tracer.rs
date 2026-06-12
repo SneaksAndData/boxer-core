@@ -1,4 +1,4 @@
-mod tracer_factory;
+pub mod tracer_middleware_factory;
 
 use crate::services::observability::open_telemetry::tracing::start_trace;
 use actix_web::dev::{forward_ready, Service, ServiceRequest, ServiceResponse};
