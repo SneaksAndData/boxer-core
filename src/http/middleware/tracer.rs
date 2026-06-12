@@ -1,8 +1,8 @@
 pub mod tracer_middleware_factory;
 
 use crate::services::observability::open_telemetry::tracing::start_trace;
-use actix_web::dev::{forward_ready, Service, ServiceRequest, ServiceResponse};
 use actix_web::Error;
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse, forward_ready};
 use futures_util::future::LocalBoxFuture;
 use opentelemetry::context::FutureExt;
 use std::sync::Arc;

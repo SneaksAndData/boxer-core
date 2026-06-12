@@ -1,6 +1,6 @@
 use super::TraceMiddleware;
-use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::Error;
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use futures_util::future::LocalBoxFuture;
 use std::sync::Arc;
 
