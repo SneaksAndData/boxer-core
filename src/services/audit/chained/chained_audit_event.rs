@@ -20,6 +20,7 @@ pub struct ChainedAuditEvent {
 }
 
 impl ChainedAuditEvent {
+    /// Creates a new empty `ChainedAuditEvent` with all fields set to `None`.
     pub fn empty() -> ChainedAuditEvent {
         ChainedAuditEvent {
             external_token: None,
@@ -30,5 +31,16 @@ impl ChainedAuditEvent {
             decision: None,
             reason: None,
         }
+    }
+
+    /// Checks if the `ChainedAuditEvent` is empty
+    pub fn is_empty(&self) -> bool {
+        self.external_token.is_none()
+            && self.internal_token.is_none()
+            && self.action.is_none()
+            && self.actor.is_none()
+            && self.resource.is_none()
+            && self.decision.is_none()
+            && self.reason.is_none()
     }
 }
