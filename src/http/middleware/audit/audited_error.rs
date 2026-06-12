@@ -36,6 +36,12 @@ impl AuditedError {
 
     /// Similar to `wrap` but extracts the `AuditEvent` from the request's extensions instead of
     /// the error's response.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the request does not contain an AuditEvent extension.
+    /// Panics if the contained AuditEvent is AuditEvent::Final, since final
+    /// audit events are not intended to be wrapped as errors.
     pub fn from_request(request: &ServiceRequest, cause: impl Error + 'static) -> AuditedError {
         let event = request
             .extensions()
@@ -53,6 +59,14 @@ impl AuditedError {
         }
     }
 
+    /// Creates an `AuditedError` in case when the external token is not present.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the request does not contain an AuditEvent extension.
+    /// Panics if the contained AuditEvent is AuditEvent::Final, since final
+    /// audit events are not intended to be wrapped as errors.
+    /// Panics if token is not present, but audit event is not empty
     pub fn external_token_not_present(request: &ServiceRequest) -> AuditedError {
         let event = request
             .extensions()
