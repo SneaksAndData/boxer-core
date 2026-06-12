@@ -7,7 +7,7 @@ use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use actix_web::body::BoxBody;
 use actix_web::dev::ServiceResponse;
 use actix_web::error::ErrorInternalServerError;
-use actix_web::{App, Error, HttpMessage, HttpResponse, test, web};
+use actix_web::{test, web, App, Error, HttpMessage, HttpResponse};
 use anyhow::Result;
 use mockall::mock;
 use pretty_assertions::assert_matches;
