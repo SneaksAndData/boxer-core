@@ -11,6 +11,7 @@ use actix_web::{test, web, App, Error, HttpMessage, HttpResponse};
 use anyhow::Result;
 use mockall::mock;
 use pretty_assertions::assert_matches;
+use std::future;
 use std::sync::Arc;
 
 #[actix_web::test]
@@ -63,7 +64,7 @@ async fn test_custom_error_without_error_event() {
 
     let chain = App::new()
         .wrap_fn(|_req, _srv| {
-            std::future::ready(Err::<ServiceResponse<BoxBody>, _>(ErrorInternalServerError(
+            future::ready(Err::<ServiceResponse<BoxBody>, _>(ErrorInternalServerError(
                 "Some error",
             )))
         })
@@ -89,8 +90,8 @@ async fn test_custom_error_panic_request_without_event() {
 
     let chain = App::new()
         .wrap_fn(|req, _src| {
-            let error = AuditedError::from_request(req, ErrorInternalServerError("Some error"));
-            std::future::ready(Err::<ServiceResponse<BoxBody>, _>(Error::from(error)))
+            let error = AuditedError::from_request(&req, ErrorInternalServerError("Some error"));
+            future::ready(Err::<ServiceResponse<BoxBody>, _>(Error::from(error)))
         })
         .wrap(AuditRecorderFactory::<MockAuditEventSource>::new(Arc::new(audit)))
         .default_service(web::to(|| async move { HttpResponse::Ok().finish() }));
@@ -114,8 +115,8 @@ async fn test_custom_error_recording() {
         .wrap_fn(|req, _src| {
             req.extensions_mut()
                 .insert(AuditEvent::Intermediate(ChainedAuditEvent::empty()));
-            let error = AuditedError::from_request(req, ErrorInternalServerError("Some error"));
-            std::future::ready(Err::<ServiceResponse<BoxBody>, _>(actix_web::Error::from(error)))
+            let error = AuditedError::from_request(&req, ErrorInternalServerError("Some error"));
+            future::ready(Err::<ServiceResponse<BoxBody>, _>(Error::from(error)))
         })
         .wrap(AuditRecorderFactory::<MockAuditEventSource>::new(Arc::new(audit)))
         .default_service(web::to(|| async move { HttpResponse::Ok().finish() }));
