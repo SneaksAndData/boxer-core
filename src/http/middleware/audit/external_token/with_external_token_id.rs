@@ -8,5 +8,5 @@ pub trait WithExternalTokenId: From<ServiceRequest> {
     /// Adds the given `ExternalToken` to the audit context and returns the modified context.
     type Token: TokenWithId;
 
-    fn with_external_token_id(self, token: Self::Token) -> ServiceRequest;
+    fn with_external_token_id(self, token: &Self::Token) -> ServiceRequest;
 }

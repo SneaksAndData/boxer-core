@@ -2,11 +2,14 @@
 mod tests;
 
 use super::begin_audit_chain::try_create_audit_context::TryCreateAuditContext;
+use crate::http::middleware::audit::external_token::token_with_id::TokenWithId;
+use crate::http::middleware::audit::external_token::with_external_token_id::WithExternalTokenId;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
-use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
+use actix_web::http::header::HeaderValue;
+use actix_web::HttpMessage;
 
 /// [`AuditedRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
 /// processed by the `begin_audit_chain` middleware and has an audit context initialized.
@@ -38,5 +41,33 @@ impl TryCreateAuditContext for AuditedRequest {
             .extensions_mut()
             .insert(AuditEvent::Intermediate(ChainedAuditEvent::empty()));
         Ok(AuditedRequest(request))
+    }
+}
+
+impl From<ServiceRequest> for AuditedRequest {
+    fn from(value: ServiceRequest) -> Self {
+        todo!()
+    }
+}
+
+impl WithExternalTokenId for AuditedRequest {
+    type Token = String;
+
+    fn with_external_token_id(self, token: &Self::Token) -> ServiceRequest {
+        todo!()
+    }
+}
+
+impl TokenWithId for String {
+    fn id() -> String {
+        todo!()
+    }
+}
+
+impl TryFrom<&HeaderValue> for String {
+    type Error = ();
+
+    fn try_from(value: &HeaderValue) -> Result<Self, Self::Error> {
+        todo!()
     }
 }
