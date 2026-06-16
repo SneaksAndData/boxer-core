@@ -7,8 +7,7 @@ mod tests;
 use super::audited_error::AuditedError;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
-use crate::services::audit::AuditService;
-use actix_web::dev::{forward_ready, Service, ServiceRequest, ServiceResponse};
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse, forward_ready};
 use futures_util::future::LocalBoxFuture;
 use std::sync::Arc;
 

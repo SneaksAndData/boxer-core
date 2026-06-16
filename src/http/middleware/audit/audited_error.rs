@@ -1,9 +1,12 @@
-use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
+#[cfg(test)]
+mod tests;
+
 use crate::services::audit::chained::audit_event::AuditEvent;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::InternalError;
 use actix_web::http::StatusCode;
 use actix_web::{HttpMessage, ResponseError};
+use anyhow::anyhow;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
@@ -33,15 +36,57 @@ impl AuditedError {
 
     /// Similar to `wrap` but extracts the `AuditEvent` from the request's extensions instead of
     /// the error's response.
-    pub fn wrap_req(request: ServiceRequest, cause: impl Error + 'static) -> AuditedError {
+    ///
+    /// # Panics
+    ///
+    /// Panics if the request does not contain an AuditEvent extension.
+    /// Panics if the contained AuditEvent is AuditEvent::Final, since final
+    /// audit events are not intended to be wrapped as errors.
+    pub fn from_request(request: &ServiceRequest, cause: impl Error + 'static) -> AuditedError {
         let event = request
             .extensions()
             .get::<AuditEvent>()
             .expect("Attempt to wrap an error without an audit event")
             .clone();
-        AuditedError {
-            event,
-            cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
+        match event {
+            AuditEvent::Final(_) => {
+                panic!("Final audit event in a request should not be wrapped for an error")
+            }
+            AuditEvent::Intermediate(data) => AuditedError {
+                event: AuditEvent::Intermediate(data),
+                cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
+            },
+        }
+    }
+
+    /// Creates an `AuditedError` in case when the external token is not present.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the request does not contain an AuditEvent extension.
+    /// Panics if the contained AuditEvent is AuditEvent::Final, since final
+    /// audit events are not intended to be wrapped as errors.
+    /// Panics if token is not present, but audit event is not empty
+    pub fn external_token_not_present(request: &ServiceRequest) -> AuditedError {
+        let event = request
+            .extensions()
+            .get::<AuditEvent>()
+            .expect("Attempt to wrap a request for an error without audit event")
+            .clone();
+        match event {
+            AuditEvent::Final(_) => {
+                panic!("Final audit event in a request should not be wrapped for token not present error")
+            }
+            AuditEvent::Intermediate(data) if data.is_empty() => AuditedError {
+                event: AuditEvent::token_not_present(),
+                cause: Box::new(InternalError::new(
+                    anyhow!("Token not present"),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                )),
+            },
+            AuditEvent::Intermediate(data) => {
+                panic!("Non-empty audit event when token is not present: {:?}", data)
+            }
         }
     }
 }
