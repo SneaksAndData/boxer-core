@@ -1,6 +1,9 @@
 pub mod token_not_present_error;
+mod token_with_id;
 pub mod with_external_token_id;
 
+use crate::http::middleware::audit::external_token::token_not_present_error::ExternalTokenError;
+use crate::http::middleware::audit::external_token::token_with_id::TokenWithId;
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::middleware::Next;
@@ -18,8 +21,7 @@ pub async fn external_token<Request: WithExternalTokenId, Error: ExternalTokenEr
     match header_value {
         None => Err(Error::external_token_not_present(&request).into()),
         Some(header_value) => {
-            let token =
-                ExternalToken::try_from(header_value).map_err(|e| Error::token_extraction_failed(&request, e))?;
+            let token = TokenWithId::try_from(header_value).map_err(|e| Error::token_extraction_failed(&request, e))?;
             next.call(Request::from(request).with_external_token_id(token)).await
         }
     }
