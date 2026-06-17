@@ -3,7 +3,6 @@ pub mod token_with_id;
 pub mod with_external_token_id;
 
 use crate::http::middleware::audit::external_token::token_not_present_error::ExternalTokenError;
-use crate::http::middleware::audit::external_token::token_with_id::TokenWithId;
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::middleware::Next;
@@ -12,14 +11,15 @@ use with_external_token_id::WithExternalTokenId;
 /// Middleware to initialize the audit chain for incoming requests.
 /// This should be the first middleware in the audit chain to ensure that all subsequent middleware
 /// and handlers have access to the audit context.
-pub async fn external_token<Request: WithExternalTokenId, Error: ExternalTokenError>(
+pub async fn external_token<Request: WithExternalTokenId, Error: ExternalTokenError + 'static>(
     request: ServiceRequest,
     next: Next<impl MessageBody>,
 ) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
-    let header_value = request.headers().get("Authorization");
+    let header_value = request.headers().get("Authorization").cloned();
 
     match header_value {
         None => Err(Error::external_token_not_present(&request).into()),
+
         Some(header_value) => {
             let token =
                 Request::Token::try_from(header_value).map_err(|e| Error::token_extraction_failed(&request, e))?;

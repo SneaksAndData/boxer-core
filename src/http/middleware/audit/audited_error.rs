@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests;
 
+use crate::http::middleware::audit::external_token::token_not_present_error::ExternalTokenError;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::InternalError;
@@ -58,7 +59,9 @@ impl AuditedError {
             },
         }
     }
+}
 
+impl ExternalTokenError for AuditedError {
     /// Creates an `AuditedError` in case when the external token is not present.
     ///
     /// # Panics
@@ -67,7 +70,7 @@ impl AuditedError {
     /// Panics if the contained AuditEvent is AuditEvent::Final, since final
     /// audit events are not intended to be wrapped as errors.
     /// Panics if token is not present, but audit event is not empty
-    pub fn external_token_not_present(request: &ServiceRequest) -> AuditedError {
+    fn external_token_not_present(request: &ServiceRequest) -> AuditedError {
         let event = request
             .extensions()
             .get::<AuditEvent>()
@@ -83,6 +86,26 @@ impl AuditedError {
                     anyhow!("Token not present"),
                     StatusCode::INTERNAL_SERVER_ERROR,
                 )),
+            },
+            AuditEvent::Intermediate(data) => {
+                panic!("Non-empty audit event when token is not present: {:?}", data)
+            }
+        }
+    }
+
+    fn token_extraction_failed(request: &ServiceRequest, cause: anyhow::Error) -> Self {
+        let event = request
+            .extensions()
+            .get::<AuditEvent>()
+            .expect("Attempt to wrap a request for an error without audit event")
+            .clone();
+        match event {
+            AuditEvent::Final(_) => {
+                panic!("Final audit event in a request should not be wrapped for token extracted error")
+            }
+            AuditEvent::Intermediate(data) if data.is_empty() => AuditedError {
+                event: AuditEvent::token_extraction_failed(cause.to_string()),
+                cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
             },
             AuditEvent::Intermediate(data) => {
                 panic!("Non-empty audit event when token is not present: {:?}", data)
