@@ -3,6 +3,7 @@ use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::audit::initial_audit_scope;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationResult;
 use actix_web::web::scope;
 use actix_web::{test, web, App};
@@ -18,8 +19,32 @@ async fn test_token_not_present() {
         "/token",
         web::to(|| async move { actix_web::HttpResponse::Ok().finish() }),
     );
+    let mut writer = MockAuditWriter::new();
+    writer
+        .expect_write()
+        .times(1)
+        .withf(|event| {
+            matches!(
+                event,
+                AuditEvent::Final(ChainedAuditEvent {
+                    external_token: Some(TokenAuditEvent {
+                        token_id: None,
+                        result: Some(TokenValidationResult::Deny),
+                        reason_errors: _,
+                        token_type: None,
+                    }),
+                    internal_token: None,
+                    action: None,
+                    actor: None,
+                    resource: None,
+                    decision: Some(Decision::Deny),
+                    reason: None,
+                })
+            )
+        })
+        .returning(|_| ());
 
-    let pipeline = initial_audit_scope(scope, Arc::new(MockAuditWriter::new()));
+    let pipeline = initial_audit_scope(scope, Arc::new(writer));
 
     let chain = App::new().service(pipeline);
     let service = test::init_service(chain).await;
@@ -32,21 +57,27 @@ async fn test_token_not_present() {
     assert_matches!(response, Err(error) => {
         let cause = error.as_error::<AuditedError>();
 
-        assert_matches!(cause, Some(audited_error) => {
-            assert_matches!(audited_error, AuditedError{event, ..} => {
-                assert_matches!(event, AuditEvent::Final(chained_event) => {
-                    assert_matches!(chained_event,
-                        ChainedAuditEvent{external_token: Some(token_event), decision: Some(Decision::Deny), ..} => {
-                            assert_matches!(token_event.result, Some(TokenValidationResult::Deny));
-                            assert!(
-                                token_event.reason_errors.contains("token-not-present"),
-                                "{:?}",
-                                token_event.reason_errors
-                            );
-                    });
-                });
-            });
-        });
+        assert_matches!(cause, Some(AuditedError{
+            event: AuditEvent::Final(
+                ChainedAuditEvent{
+                    external_token: Some(TokenAuditEvent{
+                        token_id: None,
+                        result: Some(TokenValidationResult::Deny),
+                        reason_errors,
+                        token_type: None
+                    }),
+                    internal_token: None,
+                    action: None,
+                    actor: None,
+                    resource: None,
+                    decision: Some(Decision::Deny),
+                    reason: None
+                }
+            ),
+            ..
+        }) => {
+            assert!(reason_errors.contains("token-not-present"), "{:?}", reason_errors)
+        })
     });
 }
 
@@ -57,8 +88,32 @@ async fn test_broken_token() {
         "/token",
         web::to(|| async move { actix_web::HttpResponse::Ok().finish() }),
     );
+    let mut writer = MockAuditWriter::new();
+    writer
+        .expect_write()
+        .times(1)
+        .withf(|event| {
+            matches!(
+                event,
+                AuditEvent::Final(ChainedAuditEvent {
+                    external_token: Some(TokenAuditEvent {
+                        token_id: None,
+                        result: Some(TokenValidationResult::Deny),
+                        reason_errors: _,
+                        token_type: None
+                    }),
+                    internal_token: None,
+                    action: None,
+                    actor: None,
+                    resource: None,
+                    decision: Some(Decision::Deny),
+                    reason: None
+                })
+            )
+        })
+        .returning(|_| ());
 
-    let pipeline = initial_audit_scope(scope, Arc::new(MockAuditWriter::new()));
+    let pipeline = initial_audit_scope(scope, Arc::new(writer));
 
     let chain = App::new().service(pipeline);
     let service = test::init_service(chain).await;
@@ -74,21 +129,27 @@ async fn test_broken_token() {
     assert_matches!(response, Err(error) => {
         let cause = error.as_error::<AuditedError>();
 
-        assert_matches!(cause, Some(audited_error) => {
-            assert_matches!(audited_error, AuditedError{event, ..} => {
-                assert_matches!(event, AuditEvent::Final(chained_event) => {
-                    assert_matches!(chained_event,
-                        ChainedAuditEvent{external_token: Some(token_event), decision: Some(Decision::Deny), ..} => {
-                            assert_matches!(token_event.result, Some(TokenValidationResult::Deny));
-                            assert!(
-                                token_event.reason_errors.contains("token-extraction-failed: Invalid token format"),
-                                "{:?}",
-                                token_event.reason_errors
-                            );
-                    });
-                });
-            });
-        });
+        assert_matches!(cause, Some(AuditedError{
+            event: AuditEvent::Final(
+                ChainedAuditEvent{
+                    external_token: Some(TokenAuditEvent{
+                        token_id: None,
+                        result: Some(TokenValidationResult::Deny),
+                        reason_errors,
+                        token_type: None
+                    }),
+                    internal_token: None,
+                    action: None,
+                    actor: None,
+                    resource: None,
+                    decision: Some(Decision::Deny),
+                    reason: None
+                }
+            ),
+            ..
+        }) => {
+            assert!(reason_errors.contains("token-extraction-failed: Invalid token format"), "{:?}", reason_errors)
+        })
     });
 }
 

@@ -3,14 +3,13 @@ mod tests;
 
 use super::begin_audit_chain::try_create_audit_context::TryCreateAuditContext;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
-use crate::http::middleware::audit::external_token::token_with_id::TokenWithId;
 use crate::http::middleware::audit::external_token::with_external_token_id::WithExternalTokenId;
 use crate::models::external_token::ExternalToken;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
-use actix_web::HttpMessage;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::error::ErrorInternalServerError;
+use actix_web::HttpMessage;
 
 /// [`AuditedRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
 /// processed by the `begin_audit_chain` middleware and has an audit context initialized.
@@ -56,7 +55,7 @@ impl AuditEventSource for AuditedRequest {
 }
 
 impl From<ServiceRequest> for AuditedRequest {
-    fn from(value: ServiceRequest) -> Self {
+    fn from(_value: ServiceRequest) -> Self {
         todo!()
     }
 }
@@ -64,7 +63,7 @@ impl From<ServiceRequest> for AuditedRequest {
 impl<'a> TryFrom<&'a ServiceResponse> for AuditedRequest {
     type Error = actix_web::Error;
 
-    fn try_from(value: &'a ServiceResponse) -> Result<AuditedRequest, Self::Error> {
+    fn try_from(_value: &'a ServiceResponse) -> Result<AuditedRequest, Self::Error> {
         todo!()
     }
 }
@@ -72,7 +71,7 @@ impl<'a> TryFrom<&'a ServiceResponse> for AuditedRequest {
 impl WithExternalTokenId for AuditedRequest {
     type Token = ExternalToken;
 
-    fn with_external_token_id(self, token: &Self::Token) -> ServiceRequest {
+    fn with_external_token_id(self, _token: &Self::Token) -> ServiceRequest {
         todo!()
     }
 }

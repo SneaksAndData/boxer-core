@@ -7,7 +7,7 @@ use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use actix_web::body::BoxBody;
 use actix_web::dev::ServiceResponse;
 use actix_web::error::ErrorInternalServerError;
-use actix_web::{App, Error, HttpMessage, HttpResponse, test, web};
+use actix_web::{test, web, App, Error, HttpMessage, HttpResponse};
 use anyhow::Result;
 use mockall::mock;
 use pretty_assertions::assert_matches;
@@ -148,14 +148,23 @@ mock! {
     }
 }
 
-impl<B> TryFrom<&ServiceResponse<B>> for MockAuditEventSource {
-    type Error = actix_web::Error;
+impl<B> TryFrom<ServiceResponse<B>> for MockAuditEventSource {
+    type Error = Error;
 
-    fn try_from(_value: &ServiceResponse<B>) -> Result<Self, Self::Error> {
+    fn try_from(_value: ServiceResponse<B>) -> Result<Self, Self::Error> {
         let mut mock = MockAuditEventSource::new();
         mock.expect_audit_event()
             .returning(|| AuditEvent::Intermediate(ChainedAuditEvent::empty()));
         Ok(mock)
+    }
+}
+
+impl Into<ServiceResponse<BoxBody>> for MockAuditEventSource {
+    fn into(self) -> ServiceResponse<BoxBody> {
+        ServiceResponse::new(
+            test::TestRequest::get().uri("/token").to_http_request(),
+            HttpResponse::Ok().finish(),
+        )
     }
 }
 
