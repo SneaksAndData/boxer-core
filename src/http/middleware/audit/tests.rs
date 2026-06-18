@@ -6,7 +6,7 @@ use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationResult;
 use actix_web::web::scope;
-use actix_web::{test, web, App};
+use actix_web::{App, test, web};
 use assert_matches::assert_matches;
 use cedar_policy::Decision;
 use mockall::mock;

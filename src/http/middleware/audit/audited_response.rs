@@ -1,8 +1,8 @@
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
 use crate::services::audit::chained::audit_event::AuditEvent;
+use actix_web::HttpMessage;
 use actix_web::body::BoxBody;
 use actix_web::dev::ServiceResponse;
-use actix_web::HttpMessage;
 
 pub struct AuditedResponse<BodyType = BoxBody>(ServiceResponse<BodyType>);
 
