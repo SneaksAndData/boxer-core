@@ -6,7 +6,7 @@ use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationResult;
 use actix_web::web::scope;
-use actix_web::{test, web, App};
+use actix_web::{test, web, App, HttpMessage, HttpRequest};
 use assert_matches::assert_matches;
 use cedar_policy::Decision;
 use mockall::mock;
@@ -154,7 +154,27 @@ async fn test_broken_token() {
 }
 
 #[actix_web::test]
-async fn test_successful_token() {}
+async fn test_successful_token() {
+    let scope = scope("").route(
+        "/token",
+        web::to(|request: HttpRequest| async move {
+            let event = request.extensions().get::<AuditEvent>().unwrap().clone();
+            actix_web::HttpResponse::Ok().finish()
+        }),
+    );
+    let mut writer = MockAuditWriter::new();
+    writer.expect_write().times(1).returning(|_| ());
+
+    let pipeline = initial_audit_scope(scope, Arc::new(writer));
+    let chain = App::new().service(pipeline);
+    let service = test::init_service(chain).await;
+    let request = test::TestRequest::get()
+        .uri("/token")
+        .append_header(("Authorization", "Bearer token"))
+        .to_request();
+    let response = test::try_call_service(&service, request).await;
+    assert_matches!(response, Ok(_) => {})
+}
 
 mock! {
 
