@@ -1,6 +1,6 @@
-use crate::http::middleware::audit::audit_recorder::AuditRecorder;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
+use crate::http::middleware::audit::audit_recorder::AuditRecorder;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use futures_util::future::LocalBoxFuture;
 use std::sync::Arc;
@@ -28,7 +28,9 @@ where
     NextService: Service<ServiceRequest, Response = ServiceResponse<BodyType>, Error = actix_web::Error> + 'static,
     NextService::Future: 'static,
     BodyType: 'static,
-    AES: for<'a> TryFrom<&'a ServiceResponse<BodyType>, Error = actix_web::Error> + AuditEventSource,
+    AES: TryFrom<ServiceResponse<BodyType>, Error = actix_web::Error>
+        + AuditEventSource
+        + Into<ServiceResponse<BodyType>>,
 {
     type Response = ServiceResponse<BodyType>;
     type Error = actix_web::Error;
