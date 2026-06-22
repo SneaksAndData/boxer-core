@@ -93,6 +93,20 @@ impl ExternalTokenError for AuditedError {
         }
     }
 
+    /// Creates an `AuditedError` for requests where an external token is present
+    /// but cannot be parsed.
+    ///
+    /// The method reads the current request `AuditEvent` from extensions and
+    /// converts an empty intermediate event into a final token-extraction-failed event,
+    /// preserving the original parsing error as the underlying HTTP error cause.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the request does not contain an `AuditEvent` extension.
+    /// Panics if the contained event is `AuditEvent::Final`, because final events
+    /// are not expected at this stage.
+    /// Panics if the contained intermediate event is not empty because it is not expected in this
+    /// context.
     fn token_extraction_failed(request: &ServiceRequest, cause: anyhow::Error) -> Self {
         let event = request
             .extensions()
