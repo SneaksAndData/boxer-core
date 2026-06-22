@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use crate::http::middleware::audit::external_token::token_not_present_error::ExternalTokenError;
+use crate::http::middleware::audit::external_token::external_token_error::ExternalTokenError;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::InternalError;

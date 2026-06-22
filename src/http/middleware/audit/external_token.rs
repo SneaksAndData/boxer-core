@@ -23,7 +23,7 @@ pub async fn external_token<Request: RequestWithTokenId, Error: ExternalTokenErr
         Some(header_value) => {
             let token =
                 Request::Token::try_from(header_value).map_err(|e| Error::token_extraction_failed(&request, e))?;
-            next.call(Request::from(request).add_token_id(&token)).await
+            next.call(Request::from(request).add_external_token_id(&token)).await
         }
     }
 }

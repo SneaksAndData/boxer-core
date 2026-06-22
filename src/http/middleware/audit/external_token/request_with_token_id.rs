@@ -13,5 +13,5 @@ pub trait RequestWithTokenId: From<ServiceRequest> {
     /// Stores the provided token id in the request audit context and returns the updated request.
     /// This method should be called to add the token id and convert the request to the appropriate
     /// type for downstream handlers and middleware.
-    fn add_token_id(self, token: &Self::Token) -> ServiceRequest;
+    fn add_external_token_id(self, token: &Self::Token) -> ServiceRequest;
 }

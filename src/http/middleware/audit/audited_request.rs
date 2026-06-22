@@ -3,13 +3,14 @@ mod tests;
 
 use super::begin_audit_chain::try_create_audit_context::TryCreateAuditContext;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
-use crate::http::middleware::audit::external_token::with_external_token_id::WithExternalTokenId;
+use crate::http::middleware::audit::external_token::request_with_token_id::RequestWithTokenId;
+use crate::http::middleware::audit::external_token::token_with_id::TokenWithId;
 use crate::models::external_token::ExternalToken;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
-use actix_web::HttpMessage;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::error::ErrorInternalServerError;
+use actix_web::HttpMessage;
 
 /// [`AuditedRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
 /// processed by the `begin_audit_chain` middleware and has an audit context initialized.
@@ -73,10 +74,39 @@ impl<'a> TryFrom<&'a ServiceResponse> for AuditedRequest {
     }
 }
 
-impl WithExternalTokenId for AuditedRequest {
+impl RequestWithTokenId for AuditedRequest {
     type Token = ExternalToken;
 
-    fn with_external_token_id(self, _token: &Self::Token) -> ServiceRequest {
-        todo!()
+    fn add_external_token_id(self, token: &Self::Token) -> ServiceRequest {
+        let token_id = token.id();
+
+        {
+            let mut binding = self.0.extensions_mut();
+            let audit_event = binding.get_mut::<AuditEvent>();
+
+            // Mutate the audit event if the audit event complains the expected structure
+            if let Some(AuditEvent::Intermediate(chained_audit_event)) = audit_event {
+                if chained_audit_event.external_token.is_some() {
+                    panic!(
+                        "External token audit event already exists in request extensions: {:?}",
+                        chained_audit_event.external_token
+                    );
+                }
+                chained_audit_event
+                    .external_token
+                    .as_mut()
+                    .expect("External token audit event not exists in request extensions")
+                    .token_id = Some(token_id);
+            } else {
+                // Otherwise, stop processing immediately
+                panic!(
+                    "Expected Intermediate Audit event to exist in request extension, but got {:?}",
+                    audit_event
+                );
+            }
+        }
+
+        // Return the updated value
+        self.0
     }
 }
