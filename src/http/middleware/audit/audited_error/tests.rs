@@ -1,4 +1,5 @@
 use crate::http::middleware::audit::audited_error::AuditedError;
+use crate::http::middleware::audit::external_token::external_token_error::ExternalTokenError;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
