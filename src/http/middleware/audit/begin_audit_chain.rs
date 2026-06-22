@@ -5,7 +5,8 @@ pub mod try_create_audit_context;
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::middleware::Next;
-use actix_web::{Error, HttpMessage};
+use actix_web::Error;
+
 use try_create_audit_context::TryCreateAuditContext;
 
 /// Initializes audit context for an incoming request and forwards it down the chain.
