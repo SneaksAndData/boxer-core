@@ -2,16 +2,17 @@ pub mod external_token_error;
 pub mod request_with_token_id;
 pub mod token_with_id;
 
-use crate::http::middleware::audit::external_token::external_token_error::ExternalTokenError;
+use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::middleware::Next;
 use request_with_token_id::RequestWithTokenId;
 
-/// Middleware to initialize the audit chain for incoming requests.
-/// This should be the first middleware in the audit chain to ensure that all subsequent middleware
-/// and handlers have access to the audit context.
-pub async fn external_token<Request: RequestWithTokenId, Error: ExternalTokenError + 'static>(
+/// Extracts the external token from the incoming request and inserts the extracted token to
+/// request extensions for further processing. If the token is not present or extraction fails,
+/// returns an error response. Inserts a token ID to the AuditEvent for the incoming request if
+/// the token is successfully extracted.
+pub async fn extract_external_token<Request: RequestWithTokenId, Error: ExternalTokenError + 'static>(
     request: ServiceRequest,
     next: Next<impl MessageBody>,
 ) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
