@@ -8,7 +8,8 @@ use crate::http::middleware::audit::external_token::token_with_id::TokenWithId;
 use crate::models::external_token::ExternalToken;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
-use actix_web::dev::{ServiceRequest, ServiceResponse};
+use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
+use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
 use actix_web::HttpMessage;
 
@@ -66,14 +67,6 @@ impl From<ServiceRequest> for AuditedRequest {
     }
 }
 
-impl<'a> TryFrom<&'a ServiceResponse> for AuditedRequest {
-    type Error = actix_web::Error;
-
-    fn try_from(_value: &'a ServiceResponse) -> Result<AuditedRequest, Self::Error> {
-        todo!()
-    }
-}
-
 impl RequestWithTokenId for AuditedRequest {
     type Token = ExternalToken;
 
@@ -92,11 +85,7 @@ impl RequestWithTokenId for AuditedRequest {
                         chained_audit_event.external_token
                     );
                 }
-                chained_audit_event
-                    .external_token
-                    .as_mut()
-                    .expect("External token audit event not exists in request extensions")
-                    .token_id = Some(token_id);
+                chained_audit_event.external_token = Some(TokenAuditEvent::external().with_token_id(&token_id))
             } else {
                 // Otherwise, stop processing immediately
                 panic!(

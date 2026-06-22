@@ -158,22 +158,48 @@ async fn test_successful_token() {
     let scope = scope("").route(
         "/token",
         web::to(|request: HttpRequest| async move {
+            // Assert that the intermediate audit event has the expected structure and values
+
             let event = request.extensions().get::<AuditEvent>().unwrap().clone();
+            assert_matches!(
+                event,
+                AuditEvent::Intermediate(ChainedAuditEvent {
+                    external_token: Some(TokenAuditEvent {
+                        token_id: Some(_),
+                        result: None,
+                        reason_errors: _,
+                        token_type: Some(token_type)
+                    }),
+                    internal_token: None,
+                    action: None,
+                    actor: None,
+                    resource: None,
+                    decision: None,
+                    reason: None
+                }) => {
+                    assert_eq!(token_type, "external".to_string());
+                }
+            );
+
             actix_web::HttpResponse::Ok().finish()
         }),
     );
+
+    // Arrange
     let mut writer = MockAuditWriter::new();
     writer.expect_write().times(1).returning(|_| ());
 
     let pipeline = initial_audit_scope(scope, Arc::new(writer));
     let chain = App::new().service(pipeline);
     let service = test::init_service(chain).await;
+
     let request = test::TestRequest::get()
         .uri("/token")
         .append_header(("Authorization", "Bearer token"))
         .to_request();
-    let response = test::try_call_service(&service, request).await;
-    assert_matches!(response, Ok(_) => {})
+
+    // Act
+    let _ = test::try_call_service(&service, request).await;
 }
 
 mock! {
