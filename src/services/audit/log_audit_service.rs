@@ -1,4 +1,5 @@
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
+use crate::services::audit::AuditService;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
 use crate::services::audit::events::resource_delete_audit_event::ResourceDeleteAuditEvent;
@@ -6,7 +7,6 @@ use crate::services::audit::events::resource_modification_audit_event::{
     ModificationResult, ResourceModificationAuditEvent,
 };
 use crate::services::audit::events::token_validation_event::TokenValidationEvent;
-use crate::services::audit::AuditService;
 use anyhow::Result;
 use std::collections::HashSet;
 
