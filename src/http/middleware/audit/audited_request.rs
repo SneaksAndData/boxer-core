@@ -3,8 +3,8 @@ mod tests;
 
 use super::begin_audit_chain::try_create_audit_context::TryCreateAuditContext;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
-use crate::http::middleware::audit::external_token::request_with_token_id::RequestWithTokenId;
-use crate::http::middleware::audit::external_token::token_with_id::TokenWithId;
+use crate::http::middleware::extract_external_token::request_with_token_id::RequestWithTokenId;
+use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::models::external_token::ExternalToken;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
@@ -43,6 +43,13 @@ impl TryCreateAuditContext for AuditedRequest {
             .extensions_mut()
             .insert(AuditEvent::Intermediate(ChainedAuditEvent::empty()));
         Ok(AuditedRequest(request))
+    }
+
+    fn is_final(&self) -> bool {
+        match self.0.extensions().get::<AuditEvent>() {
+            None => panic!("Audit event should exist in request extensions"),
+            Some(event) => matches!(event, AuditEvent::Final(_)),
+        }
     }
 }
 

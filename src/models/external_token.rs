@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use crate::http::middleware::audit::external_token::token_with_id::TokenWithId;
+use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use actix_web::http::header::HeaderValue;
 use anyhow::bail;
 
