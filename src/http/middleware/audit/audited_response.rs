@@ -4,7 +4,7 @@ use actix_web::HttpMessage;
 use actix_web::body::BoxBody;
 use actix_web::dev::ServiceResponse;
 
-/// `AuditedResponse` contains an abstraction layer for `ServiceResponse` that abstracts the handling
+/// [`AuditedResponse`] contains an abstraction layer for `ServiceResponse` that abstracts the handling
 /// of the audit metadata and the audit metadata validation.
 pub struct AuditedResponse<BodyType = BoxBody>(ServiceResponse<BodyType>);
 
@@ -22,6 +22,9 @@ impl<BodyType> AuditEventSource for AuditedResponse<BodyType> {
 impl<BodyType> TryFrom<ServiceResponse<BodyType>> for AuditedResponse<BodyType> {
     type Error = actix_web::Error;
 
+    /// Attempts to create an [`AuditedResponse`] from a [`ServiceResponse`] by checking if the request
+    /// contains an [`AuditEvent`] in its extensions. If the [`AuditEvent`] is not found,
+    /// an error is returned indicating that the response cannot be audited.
     fn try_from(value: ServiceResponse<BodyType>) -> Result<Self, Self::Error> {
         let contains = { value.request().extensions().contains::<AuditEvent>() };
 
@@ -35,6 +38,7 @@ impl<BodyType> TryFrom<ServiceResponse<BodyType>> for AuditedResponse<BodyType> 
 }
 
 impl<BodyType> Into<ServiceResponse<BodyType>> for AuditedResponse<BodyType> {
+    /// Converts the [`AuditedResponse`] to a [`ServiceResponse`] by extracting its underlying object
     fn into(self) -> ServiceResponse<BodyType> {
         self.0
     }
