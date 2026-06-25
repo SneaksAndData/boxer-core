@@ -1,4 +1,4 @@
-use crate::http::middleware::audit::external_token::token_with_id::TokenWithId;
+use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use actix_web::dev::ServiceRequest;
 
 /// Adds an external token identifier to request-scoped audit context.

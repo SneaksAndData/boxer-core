@@ -6,12 +6,14 @@ use actix_web::Error;
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::middleware::Next;
+
 use try_create_audit_context::TryCreateAuditContext;
 
-/// Middleware to initialize the audit chain for incoming requests.
-/// This should be the first middleware in the audit chain to ensure that all subsequent middleware
-/// and handlers have access to the audit context.
-pub async fn begin_audit_chain<AuditContext: TryCreateAuditContext>(
+/// Initializes audit context for an incoming request and forwards it down the chain.
+///
+/// Place this as the first middleware that must run on request ingress so later
+/// middleware and handlers can read the audit context from request extensions.
+pub async fn begin_audit_chain<AuditContext: TryCreateAuditContext + 'static>(
     req: ServiceRequest,
     next: Next<impl MessageBody>,
 ) -> Result<ServiceResponse<impl MessageBody>, Error> {
