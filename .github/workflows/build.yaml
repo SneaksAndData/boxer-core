@@ -21,39 +21,31 @@ jobs:
       pull-requests: write # required for dependabot PRs
       contents: read       # required for dependabot PRs
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # We use nightly build for code coverage since we use the coverage(off) attribute that is
       # only available in nightly builds.
       - name: Install minimal stable with clippy and rustfmt
-        uses: actions-rust-lang/setup-rust-toolchain@v1.15.0
+        uses: actions-rust-lang/setup-rust-toolchain@v1.16.1
         with:
           toolchain: nightly
           components: rustfmt, clippy
 
       - name: Install just, cargo-llvm-cov, cargo-nextest
-        uses: taiki-e/install-action@v2.62.1
+        uses: taiki-e/install-action@v2.82.2
         with:
           tool: cargo-llvm-cov
+
+      - name: Build
+        run: cargo build --workspace --all-targets --all-features
 
       - name: Rustfmt Check
         uses: actions-rust-lang/rustfmt@v1
 
-      - name: Create k8s Kind Cluster
-        uses: helm/kind-action@v1
-        with:
-          cluster_name: 'kind'
+      - uses: extractions/setup-just@v4
 
-      - name: Check kind cluster
-        run: |
-          kubectl cluster-info
-          kubectl get nodes
-          kind get kubeconfig --name kind
-
-      - name: Install integration test dependencies
-        run: |
-          helm dependency build ./integration-tests/helm/integration_tests \
-          && helm install integration-tests ./integration-tests/helm/integration_tests 
+      - name: Setup integration tests
+        run: just up
 
       - name: Generate code coverage
         run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info

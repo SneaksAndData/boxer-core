@@ -1,4 +1,5 @@
 pub mod audit_facade;
+pub mod chained;
 pub mod events;
 pub mod log_audit_service;
 

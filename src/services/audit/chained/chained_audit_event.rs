@@ -20,16 +20,7 @@ pub struct ChainedAuditEvent {
 }
 
 impl ChainedAuditEvent {
-    pub(crate) fn set_external_token_id(&mut self, token: &str) {
-        self.external_token = Some(TokenAuditEvent::external().with_token_id(token));
-    }
-
-    pub(crate) fn set_external_token_error(&mut self, error: actix_web::Error) {
-        self.external_token = Some(TokenAuditEvent::external().failure(error));
-    }
-}
-
-impl ChainedAuditEvent {
+    /// Creates a new empty `ChainedAuditEvent` with all fields set to `None`.
     pub fn empty() -> ChainedAuditEvent {
         ChainedAuditEvent {
             external_token: None,
@@ -40,5 +31,16 @@ impl ChainedAuditEvent {
             decision: None,
             reason: None,
         }
+    }
+
+    /// Checks if the `ChainedAuditEvent` is empty
+    pub fn is_empty(&self) -> bool {
+        self.external_token.is_none()
+            && self.internal_token.is_none()
+            && self.action.is_none()
+            && self.actor.is_none()
+            && self.resource.is_none()
+            && self.decision.is_none()
+            && self.reason.is_none()
     }
 }
