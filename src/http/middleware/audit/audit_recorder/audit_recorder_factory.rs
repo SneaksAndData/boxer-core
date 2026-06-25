@@ -28,7 +28,9 @@ where
     NextService: Service<ServiceRequest, Response = ServiceResponse<BodyType>, Error = actix_web::Error> + 'static,
     NextService::Future: 'static,
     BodyType: 'static,
-    AES: for<'a> TryFrom<&'a ServiceResponse<BodyType>, Error = actix_web::Error> + AuditEventSource,
+    AES: TryFrom<ServiceResponse<BodyType>, Error = actix_web::Error>
+        + AuditEventSource
+        + Into<ServiceResponse<BodyType>>,
 {
     type Response = ServiceResponse<BodyType>;
     type Error = actix_web::Error;

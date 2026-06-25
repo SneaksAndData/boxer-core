@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests;
 
+use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::InternalError;
@@ -58,7 +59,8 @@ impl AuditedError {
             },
         }
     }
-
+}
+impl ExternalTokenError for AuditedError {
     /// Creates an `AuditedError` in case when the external token is not present.
     ///
     /// # Panics
@@ -67,7 +69,7 @@ impl AuditedError {
     /// Panics if the contained AuditEvent is AuditEvent::Final, since final
     /// audit events are not intended to be wrapped as errors.
     /// Panics if token is not present, but audit event is not empty
-    pub fn external_token_not_present(request: &ServiceRequest) -> AuditedError {
+    fn external_token_not_present(request: &ServiceRequest) -> AuditedError {
         let event = request
             .extensions()
             .get::<AuditEvent>()
@@ -83,6 +85,40 @@ impl AuditedError {
                     anyhow!("Token not present"),
                     StatusCode::INTERNAL_SERVER_ERROR,
                 )),
+            },
+            AuditEvent::Intermediate(data) => {
+                panic!("Non-empty audit event when token is not present: {:?}", data)
+            }
+        }
+    }
+
+    /// Creates an `AuditedError` for requests where an external token is present
+    /// but cannot be parsed.
+    ///
+    /// The method reads the current request `AuditEvent` from extensions and
+    /// converts an empty intermediate event into a final token-extraction-failed event,
+    /// preserving the original parsing error as the underlying HTTP error cause.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the request does not contain an `AuditEvent` extension.
+    /// Panics if the contained event is `AuditEvent::Final`, because final events
+    /// are not expected at this stage.
+    /// Panics if the contained intermediate event is not empty because it is not expected in this
+    /// context.
+    fn token_extraction_failed(request: &ServiceRequest, cause: anyhow::Error) -> Self {
+        let event = request
+            .extensions()
+            .get::<AuditEvent>()
+            .expect("Attempt to wrap a request for an error without audit event")
+            .clone();
+        match event {
+            AuditEvent::Final(_) => {
+                panic!("Final audit event in a request should not be wrapped for token extracted error")
+            }
+            AuditEvent::Intermediate(data) if data.is_empty() => AuditedError {
+                event: AuditEvent::token_extraction_failed(cause.to_string()),
+                cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
             },
             AuditEvent::Intermediate(data) => {
                 panic!("Non-empty audit event when token is not present: {:?}", data)

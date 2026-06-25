@@ -37,7 +37,9 @@ where
     Next: Service<ServiceRequest, Response = ServiceResponse<BodyType>, Error = actix_web::Error> + 'static,
     Next::Future: 'static,
     BodyType: 'static,
-    AES: for<'a> TryFrom<&'a ServiceResponse<BodyType>, Error = actix_web::Error> + AuditEventSource,
+    AES: TryFrom<ServiceResponse<BodyType>, Error = actix_web::Error>
+        + AuditEventSource
+        + Into<ServiceResponse<BodyType>>,
 {
     type Response = ServiceResponse<BodyType>;
     type Error = actix_web::Error;
@@ -53,9 +55,9 @@ where
 
             match result {
                 Ok(response) => {
-                    let audited: AES = AES::try_from(&response)?;
+                    let audited: AES = AES::try_from(response)?;
                     audit_writer.write(audited.audit_event());
-                    Ok(response)
+                    Ok(audited.into())
                 }
 
                 Err(error) => {
