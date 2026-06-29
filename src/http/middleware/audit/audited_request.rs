@@ -9,9 +9,9 @@ use crate::models::external_token::ExternalToken;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
+use actix_web::HttpMessage;
 
 /// [`AuditedRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
 /// processed by the `begin_audit_chain` middleware and has an audit context initialized.
@@ -108,7 +108,7 @@ impl RequestWithTokenId for AuditedRequest {
     ///
     /// Panics if the audit event in extensions is not an `AuditEvent::Intermediate`,
     /// which would mean the audit chain is in an unexpected state.
-    fn add_token_id(self, token: &Self::Token) -> ServiceRequest {
+    fn add_token(self, token: Self::Token) -> ServiceRequest {
         let token_id = token.id();
 
         {
@@ -131,6 +131,8 @@ impl RequestWithTokenId for AuditedRequest {
                     audit_event
                 );
             }
+
+            binding.insert(token.clone());
         }
 
         // Return the updated value
