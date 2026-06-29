@@ -108,7 +108,7 @@ impl RequestWithTokenId for AuditedRequest {
     ///
     /// Panics if the audit event in extensions is not an `AuditEvent::Intermediate`,
     /// which would mean the audit chain is in an unexpected state.
-    fn add_token_id(self, token: &Self::Token) -> ServiceRequest {
+    fn add_token(self, token: Self::Token) -> ServiceRequest {
         let token_id = token.id();
 
         {
@@ -131,6 +131,8 @@ impl RequestWithTokenId for AuditedRequest {
                     audit_event
                 );
             }
+
+            binding.insert(token.clone());
         }
 
         // Return the updated value

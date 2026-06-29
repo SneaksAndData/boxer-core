@@ -10,8 +10,9 @@ pub trait RequestWithTokenId: From<ServiceRequest> {
     /// Token type used to derive the external token identifier.
     type Token: TokenWithId;
 
-    /// Stores the provided token id in the request audit context and returns the updated request.
+    /// Stores the provided token in the request context and returns the updated request.
+    /// The method additionally enriches the audit event coming to the request with the token id.
     /// This method should be called to add the token id and convert the request to the appropriate
     /// type for downstream handlers and middleware.
-    fn add_token_id(self, token: &Self::Token) -> ServiceRequest;
+    fn add_token(self, token: Self::Token) -> ServiceRequest;
 }
