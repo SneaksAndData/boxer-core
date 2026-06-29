@@ -9,7 +9,7 @@ use crate::services::audit::events::resource_modification_audit_event::ResourceM
 use crate::services::audit::events::token_validation_event::TokenValidationEvent;
 use anyhow::Result;
 
-pub trait AuditService: Send + Sync {
+pub trait AuditService: Send + Sync + 'static {
     fn record_authorization(&self, event: AuthorizationAuditEvent) -> Result<()>;
     fn record_resource_deletion(&self, event: ResourceDeleteAuditEvent) -> Result<()>;
     fn record_resource_modification(&self, event: ResourceModificationAuditEvent) -> Result<()>;
