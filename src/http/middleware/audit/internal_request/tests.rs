@@ -1,9 +1,9 @@
 use super::InternalRequest;
 use crate::http::middleware::audit::begin_audit_chain::try_create_audit_context::TryCreateAuditContext;
 use crate::services::audit::chained::audit_event::AuditEvent;
+use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::test::TestRequest;
-use actix_web::HttpMessage;
 use pretty_assertions::assert_matches;
 
 #[test]

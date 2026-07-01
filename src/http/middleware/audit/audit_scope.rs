@@ -5,9 +5,9 @@ use crate::http::middleware::audit::audited_response::AuditedResponse;
 use crate::http::middleware::audit::begin_audit_chain::begin_audit_chain;
 use crate::http::middleware::audit::external_request::ExternalRequest;
 use crate::http::middleware::extract_external_token::extract_external_token;
+use actix_web::Scope;
 use actix_web::dev::HttpServiceFactory;
 use actix_web::middleware::from_fn;
-use actix_web::Scope;
 use std::sync::Arc;
 
 /// Extension trait for attaching the complete audit middleware chain to an Actix [`Scope`].
