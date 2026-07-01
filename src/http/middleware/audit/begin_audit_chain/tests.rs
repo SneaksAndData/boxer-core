@@ -2,7 +2,7 @@ use crate::http::middleware::audit::begin_audit_chain::begin_audit_chain;
 use crate::http::middleware::audit::begin_audit_chain::try_create_audit_context::TryCreateAuditContext;
 use actix_web::dev::ServiceRequest;
 use actix_web::middleware::from_fn;
-use actix_web::{App, HttpRequest, HttpResponse, test, web};
+use actix_web::{test, web, App, HttpRequest, HttpResponse};
 use mockall::mock;
 
 #[actix_web::test]
@@ -40,8 +40,6 @@ mock! {
 
     impl TryCreateAuditContext for AuditContext {
         fn try_create_audit_context(request: ServiceRequest) -> Result<Self, actix_web::Error>;
-
-        fn is_final(&self) -> bool { false }
     }
 
     impl Into<ServiceRequest> for AuditContext {

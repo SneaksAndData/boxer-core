@@ -1,9 +1,9 @@
-use crate::http::middleware::audit::audited_request::AuditedRequest;
 use crate::http::middleware::audit::begin_audit_chain::try_create_audit_context::TryCreateAuditContext;
+use crate::http::middleware::audit::external_request::ExternalRequest;
 use crate::services::audit::chained::audit_event::AuditEvent;
-use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::test::TestRequest;
+use actix_web::HttpMessage;
 use pretty_assertions::assert_matches;
 
 #[test]
@@ -12,7 +12,7 @@ fn test_audit_event_initialization() {
     let request = TestRequest::get().uri("/any-route").to_srv_request();
 
     // Act
-    let result = AuditedRequest::try_create_audit_context(request);
+    let result = ExternalRequest::try_create_audit_context(request);
 
     // Assert
     assert_matches!(result, Ok(_));
@@ -27,8 +27,8 @@ fn test_audit_event_double_initialization() {
     let request = TestRequest::get().uri("/any-route").to_srv_request();
 
     // Act
-    let request: ServiceRequest = AuditedRequest::try_create_audit_context(request).unwrap().into();
-    let result = AuditedRequest::try_create_audit_context(request);
+    let request: ServiceRequest = ExternalRequest::try_create_audit_context(request).unwrap().into();
+    let result = ExternalRequest::try_create_audit_context(request);
 
     // Assert
     assert_matches!(result, Err(_));

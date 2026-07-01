@@ -8,7 +8,7 @@ use actix_web::dev::ServiceRequest;
 /// (for example, duplicate token identifiers).
 pub trait RequestWithTokenId: From<ServiceRequest> {
     /// Token type used to derive the external token identifier.
-    type Token: TokenWithId;
+    type Token: TokenWithId + Clone;
 
     /// Stores the provided token in the request context and returns the updated request.
     /// The method additionally enriches the audit event coming to the request with the token id.

@@ -9,6 +9,4 @@ pub trait TryCreateAuditContext: Into<ServiceRequest> {
     fn try_create_audit_context(request: ServiceRequest) -> Result<Self, actix_web::Error>
     where
         Self: Sized;
-
-    fn is_final(&self) -> bool;
 }
