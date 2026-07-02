@@ -13,16 +13,16 @@ use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
 
-/// [`AuditedRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
+/// [`ExternalRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
 /// processed by the `begin_audit_chain` middleware and has an audit context initialized.
 /// This struct is used to ensure that the audit context is properly initialized and to prevent
 /// multiple initializations of the audit context for the same request.
 #[derive(Debug)]
-pub struct AuditedRequest(ServiceRequest);
+pub struct ExternalRequest(ServiceRequest);
 
 /// Implementing `Into<ServiceRequest>` allows us to easily convert an `AuditedRequest` back into
 /// a `ServiceRequest` when passing it to the next middleware or handler in the chain.
-impl Into<ServiceRequest> for AuditedRequest {
+impl Into<ServiceRequest> for ExternalRequest {
     fn into(self) -> ServiceRequest {
         self.0
     }
@@ -32,7 +32,7 @@ impl Into<ServiceRequest> for AuditedRequest {
 /// creating an audit context from a `ServiceRequest`. The implementation checks if the request
 /// already contains an `AuditEvent` in its extensions, which would indicate that an audit context
 /// has already been initialized.
-impl TryCreateAuditContext for AuditedRequest {
+impl TryCreateAuditContext for ExternalRequest {
     fn try_create_audit_context(request: ServiceRequest) -> Result<Self, actix_web::Error> {
         if request.extensions().get::<AuditEvent>().is_some() {
             return Err(ErrorInternalServerError(
@@ -42,24 +42,17 @@ impl TryCreateAuditContext for AuditedRequest {
         request
             .extensions_mut()
             .insert(AuditEvent::Intermediate(ChainedAuditEvent::empty()));
-        Ok(AuditedRequest(request))
-    }
-
-    fn is_final(&self) -> bool {
-        match self.0.extensions().get::<AuditEvent>() {
-            None => panic!("Audit event should exist in request extensions"),
-            Some(event) => matches!(event, AuditEvent::Final(_)),
-        }
+        Ok(ExternalRequest(request))
     }
 }
 
-impl AuditEventSource for AuditedRequest {
+impl AuditEventSource for ExternalRequest {
     /// Returns the current [`AuditEvent`] stored in the request extensions.
     ///
     /// # Panics
     ///
     /// Panics if the request does not contain an `AuditEvent` extension.
-    /// This should never happen for a properly constructed [`AuditedRequest`],
+    /// This should never happen for a properly constructed [`ExternalRequest`],
     /// since `try_create_audit_context` always inserts an event on creation.
     fn audit_event(&self) -> AuditEvent {
         self.0
@@ -70,8 +63,8 @@ impl AuditEventSource for AuditedRequest {
     }
 }
 
-impl From<ServiceRequest> for AuditedRequest {
-    /// Wraps a [`ServiceRequest`] into an [`AuditedRequest`], asserting that an audit context
+impl From<ServiceRequest> for ExternalRequest {
+    /// Wraps a [`ServiceRequest`] into an [`ExternalRequest`], asserting that an audit context
     /// is already present in request extensions.
     ///
     /// This is the counterpart to [`Into<ServiceRequest>`] and is used by the external token
@@ -88,11 +81,11 @@ impl From<ServiceRequest> for AuditedRequest {
             .get::<AuditEvent>()
             .cloned()
             .expect("Audited event not exists in request extensions");
-        AuditedRequest(value)
+        ExternalRequest(value)
     }
 }
 
-impl RequestWithTokenId for AuditedRequest {
+impl RequestWithTokenId for ExternalRequest {
     type Token = ExternalToken;
 
     /// Stores the external token identifier in the request's audit context and returns

@@ -40,8 +40,6 @@ mock! {
 
     impl TryCreateAuditContext for AuditContext {
         fn try_create_audit_context(request: ServiceRequest) -> Result<Self, actix_web::Error>;
-
-        fn is_final(&self) -> bool { false }
     }
 
     impl Into<ServiceRequest> for AuditContext {

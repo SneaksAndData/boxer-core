@@ -1,9 +1,9 @@
 use crate::http::middleware::audit::audit_recorder::audit_recorder_factory::AuditRecorderFactory;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
 use crate::http::middleware::audit::audited_error::AuditedError;
-use crate::http::middleware::audit::audited_request::AuditedRequest;
 use crate::http::middleware::audit::audited_response::AuditedResponse;
 use crate::http::middleware::audit::begin_audit_chain::begin_audit_chain;
+use crate::http::middleware::audit::external_request::ExternalRequest;
 use crate::http::middleware::extract_external_token::extract_external_token;
 use actix_web::Scope;
 use actix_web::dev::HttpServiceFactory;
@@ -26,8 +26,8 @@ pub trait AuditScope {
 
 impl AuditScope for Scope {
     fn with_initial_audit_scope(self, writer: Arc<dyn AuditWriter>) -> impl HttpServiceFactory {
-        self.wrap(from_fn(extract_external_token::<AuditedRequest, AuditedError>))
+        self.wrap(from_fn(extract_external_token::<ExternalRequest, AuditedError>))
             .wrap(AuditRecorderFactory::<AuditedResponse<_>>::new(writer))
-            .wrap(from_fn(begin_audit_chain::<AuditedRequest>))
+            .wrap(from_fn(begin_audit_chain::<ExternalRequest>))
     }
 }

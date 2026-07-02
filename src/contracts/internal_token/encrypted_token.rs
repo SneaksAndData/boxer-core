@@ -2,6 +2,7 @@ use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use actix_web::http::header::HeaderValue;
 
 /// Wraps the raw encrypted token value extracted from request headers.
+#[derive(Clone)]
 pub struct EncryptedToken(String);
 
 impl TryFrom<HeaderValue> for EncryptedToken {
