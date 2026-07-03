@@ -11,6 +11,7 @@ pub mod extract_external_token;
 pub mod extract_internal_token;
 pub mod logging;
 pub mod request_with_token_id;
+pub mod token_decryptor_middleware;
 pub mod tracer;
 
 async fn extract_token_from_header<TokenType, Request, Error>(
