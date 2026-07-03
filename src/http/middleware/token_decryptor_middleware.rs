@@ -41,7 +41,7 @@ where
             let mut request_with_token = R::try_from(req)?;
             let encrypted_token = request_with_token.token();
             let claims = decryptor
-                .decrypt(&encrypted_token)
+                .decrypt(encrypted_token)
                 .map_err(ErrorBadRequest)
                 .map_err(|e| AuditedError::new(request_with_token.audit_event(), e))?;
             next.call(request_with_token.set_claims(claims)).await
