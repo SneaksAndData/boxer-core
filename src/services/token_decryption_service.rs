@@ -6,7 +6,7 @@ use crate::contracts::internal_token::encrypted_token::EncryptedToken;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::services::token_decryption_service::encryption_keys::EncryptionKeys;
 use crate::services::token_decryption_service::token_settings::TokenValidationSettings;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use collection_macros::hashset;
 use josekit::jwe::Dir;
 use josekit::jwt;
