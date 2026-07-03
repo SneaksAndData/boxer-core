@@ -23,3 +23,10 @@ impl TokenWithId for EncryptedToken {
         format!("md5:{:x}", token_hash)
     }
 }
+
+impl Into<String> for EncryptedToken {
+    /// Returns the underlying raw encrypted token from the [`EncryptedToken`] instance.
+    fn into(self) -> String {
+        self.0
+    }
+}

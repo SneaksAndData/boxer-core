@@ -443,6 +443,7 @@ dependencies = [
  "assert_matches",
  "async-trait",
  "cedar-policy",
+ "collection_macros",
  "duration-string",
  "env_filter",
  "futures",
@@ -625,6 +626,12 @@ dependencies = [
  "serde",
  "windows-link",
 ]
+
+[[package]]
+name = "collection_macros"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50b180e6a75e306052a61658f832b4fc565a6e5a204da05f0fe7f50a31fb827a"
 
 [[package]]
 name = "concurrent-queue"
