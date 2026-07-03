@@ -1,6 +1,6 @@
-mod decryptor;
-mod request_with_token;
-mod token_decryptor_middleware_factory;
+pub mod decryptor;
+pub mod request_with_token;
+pub mod token_decryptor_middleware_factory;
 
 use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
