@@ -8,7 +8,7 @@ use request_with_token_id::RequestWithTokenId;
 
 pub mod audit;
 pub mod extract_external_token;
-// pub mod extract_internal_token;
+pub mod extract_internal_token;
 pub mod logging;
 pub mod request_with_token_id;
 mod token_decryptor_middleware;
