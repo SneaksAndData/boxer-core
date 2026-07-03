@@ -22,6 +22,15 @@ pub struct AuditedError {
 impl AuditedError {
     /// Wraps a given `ResponseError` into an `AuditedError`, extracting the associated
     /// `AuditEvent` from the error's response extensions.
+    pub fn new(event: AuditEvent, cause: impl Error + 'static) -> AuditedError {
+        AuditedError {
+            event,
+            cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
+        }
+    }
+
+    /// Wraps a given `ResponseError` into an `AuditedError`, extracting the associated
+    /// `AuditEvent` from the error's response extensions.
     pub fn wrap(cause: impl ResponseError + 'static) -> AuditedError {
         let event = cause
             .error_response()
