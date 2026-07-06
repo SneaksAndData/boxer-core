@@ -1,5 +1,5 @@
-use crate::services::audit::AuditService;
 use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
+use crate::services::audit::AuditService;
 use crate::services::base::upsert_repository::ReadOnlyRepository;
 use crate::services::observability::open_telemetry::metrics::authorization_metric::AuthorizationMetric;
 use crate::services::observability::open_telemetry::metrics::metric_recorders::token_accepted::TokenAccepted;
@@ -7,12 +7,12 @@ use crate::services::observability::open_telemetry::metrics::metric_recorders::t
 use crate::services::observability::open_telemetry::metrics::provider::MetricsProvider;
 use crate::services::observability::open_telemetry::tracing::start_trace;
 use crate::services::service_provider::ServiceProvider;
-use crate::services::validation_service::ValidationService;
 use crate::services::validation_service::path_segment::PathSegment;
 use crate::services::validation_service::request_context::RequestContext;
 use crate::services::validation_service::request_segment::RequestSegment;
 use crate::services::validation_service::required_claims::RequiredClaims;
 use crate::services::validation_service::schema_provider::SchemaProvider;
+use crate::services::validation_service::ValidationService;
 use async_trait::async_trait;
 use cedar_policy::{Authorizer, Context, Entities, EntityUid, PolicySet, Request};
 use log::{debug, info};
@@ -31,9 +31,9 @@ pub type ResourceRepository = EntityUidRepository<(String, Vec<PathSegment>)>;
 /// Abstracts the repository that contains PolicySet objects.
 pub type PolicyRepository = dyn ReadOnlyRepository<String, PolicySet, ReadError = anyhow::Error>;
 
-pub struct CedarValidationService {
+pub struct CedarValidationService<Claims> {
     authorizer: Authorizer,
-    schema_provider: Arc<dyn SchemaProvider>,
+    schema_provider: Arc<dyn SchemaProvider<Claims>>,
     action_repository: Arc<ActionRepository>,
     resource_repository: Arc<ResourceRepository>,
     policy_repository: Arc<PolicyRepository>,
@@ -41,10 +41,10 @@ pub struct CedarValidationService {
     metrics_provider: MetricsProvider,
 }
 
-impl CedarValidationService {
+impl<Claims> CedarValidationService<Claims> {
     /// Creates the new instance of the CedarValidationService
     pub fn new(
-        schema_provider: Arc<dyn SchemaProvider>,
+        schema_provider: Arc<dyn SchemaProvider<Claims>>,
         action_repository: Arc<ActionRepository>,
         resource_repository: Arc<ResourceRepository>,
         policy_repository: Arc<PolicyRepository>,
@@ -64,7 +64,7 @@ impl CedarValidationService {
 }
 
 #[async_trait]
-impl<Claims> ValidationService<Claims> for CedarValidationService
+impl<Claims> ValidationService<Claims> for CedarValidationService<Claims>
 where
     Claims: RequiredClaims + Send + Sync + 'static,
 {
@@ -72,7 +72,7 @@ where
         let ctx = start_trace("request_validation", None);
         let schema = self
             .schema_provider
-            .get_schema(claims.get_validator_schema_id().clone())
+            .get_schema(&claims)
             .with_context(ctx.clone())
             .await?;
         debug!("Cedar validation schemas: {:?}", schema);

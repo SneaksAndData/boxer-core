@@ -1,4 +1,4 @@
-use cedar_policy::Entity;
+use cedar_policy::{Entity, SchemaFragment};
 
 /// Represents a container of JWT claims required for the token validation.
 pub trait RequiredClaims {
@@ -7,4 +7,7 @@ pub trait RequiredClaims {
 
     /// Returns the parsed principal from the claims.
     fn get_principal(&self) -> Entity;
+
+    /// Returns the schema fragment from the claims.
+    fn get_schema(&self) -> SchemaFragment;
 }
