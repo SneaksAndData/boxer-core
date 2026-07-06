@@ -1,4 +1,5 @@
 pub mod cedar_validation_service;
+mod decision_handler;
 mod http_method;
 mod path_segment;
 mod request_context;

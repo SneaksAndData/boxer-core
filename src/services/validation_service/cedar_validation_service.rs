@@ -1,5 +1,5 @@
-use crate::services::audit::AuditService;
 use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
+use crate::services::audit::AuditService;
 use crate::services::base::upsert_repository::ReadOnlyRepository;
 use crate::services::observability::open_telemetry::metrics::authorization_metric::AuthorizationMetric;
 use crate::services::observability::open_telemetry::metrics::metric_recorders::token_accepted::TokenAccepted;
@@ -7,12 +7,13 @@ use crate::services::observability::open_telemetry::metrics::metric_recorders::t
 use crate::services::observability::open_telemetry::metrics::provider::MetricsProvider;
 use crate::services::observability::open_telemetry::tracing::start_trace;
 use crate::services::service_provider::ServiceProvider;
-use crate::services::validation_service::ValidationService;
+use crate::services::validation_service::decision_handler::DecisionHandler;
 use crate::services::validation_service::path_segment::PathSegment;
 use crate::services::validation_service::request_context::RequestContext;
 use crate::services::validation_service::request_segment::RequestSegment;
 use crate::services::validation_service::required_claims::RequiredClaims;
 use crate::services::validation_service::schema_provider::SchemaProvider;
+use crate::services::validation_service::ValidationService;
 use async_trait::async_trait;
 use cedar_policy::{Authorizer, Context, Entities, EntityUid, PolicySet, Request};
 use log::{debug, info};
@@ -39,6 +40,7 @@ pub struct CedarValidationService {
     policy_repository: Arc<PolicyRepository>,
     audit: Arc<dyn AuditService>,
     metrics_provider: MetricsProvider,
+    desision_handler: Arc<dyn DecisionHandler>,
 }
 
 impl CedarValidationService {
@@ -50,6 +52,7 @@ impl CedarValidationService {
         policy_repository: Arc<PolicyRepository>,
         audit: Arc<dyn AuditService>,
         metrics_provider: MetricsProvider,
+        audit_event_handler: Arc<dyn DecisionHandler>,
     ) -> Self {
         CedarValidationService {
             authorizer: Authorizer::new(),
@@ -59,6 +62,7 @@ impl CedarValidationService {
             policy_repository,
             audit,
             metrics_provider,
+            desision_handler: audit_event_handler,
         }
     }
 }
@@ -115,8 +119,10 @@ where
             resource.to_string()
         );
 
-        self.audit
-            .record_authorization(AuthorizationAuditEvent::new(&actor, &action, &resource, &answer))?;
+        self.desision_handler.handle(&actor, &action, &resource, &answer);
+
+        // self.audit
+        //     .record_authorization(AuthorizationAuditEvent::new(&actor, &action, &resource, &answer))?;
 
         match answer.decision() {
             cedar_policy::Decision::Allow => {
