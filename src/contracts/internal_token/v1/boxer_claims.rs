@@ -3,6 +3,7 @@ mod tests;
 
 use crate::contracts::dynamic_claims_collection::DynamicClaims;
 use crate::contracts::internal_token::v1::{PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, VALIDATOR_SCHEMA_ID_KEY};
+use crate::services::validation_service::required_claims::RequiredClaims;
 use cedar_policy::{Entity, SchemaFragment};
 
 #[derive(Debug)]
@@ -45,5 +46,19 @@ where
             schema_id,
             validator_schema_id,
         })
+    }
+}
+
+impl RequiredClaims for BoxerClaims {
+    fn get_validator_schema_id(&self) -> String {
+        self.validator_schema_id.clone()
+    }
+
+    fn get_principal(&self) -> Entity {
+        self.principal.clone()
+    }
+
+    fn get_schema(&self) -> SchemaFragment {
+        self.schema.clone()
     }
 }
