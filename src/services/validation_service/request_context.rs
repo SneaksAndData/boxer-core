@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests;
 
-use crate::services::observability::open_telemetry::tracing::{start_trace, ErrorExt};
+use crate::services::observability::open_telemetry::tracing::{ErrorExt, start_trace};
 use actix_web::error::ErrorBadRequest;
 use actix_web::http::Uri;
 use actix_web::{FromRequest, HttpRequest};
 use cedar_policy::{EntityId, EntityTypeName, EntityUid};
-use std::future::{ready, Ready};
+use std::future::{Ready, ready};
 use std::str::FromStr;
 
 const ORIGINAL_URL_NGINX_HEADER: &str = "X-Original-URL";
