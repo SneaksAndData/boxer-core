@@ -4,10 +4,13 @@ use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::audit::audited_response::AuditedResponse;
 use crate::http::middleware::audit::begin_audit_chain::begin_audit_chain;
 use crate::http::middleware::audit::external_request::ExternalRequest;
+use crate::http::middleware::audit::internal_request::InternalRequest;
 use crate::http::middleware::extract_external_token::extract_external_token;
-use actix_web::Scope;
+use crate::http::middleware::token_decryptor_middleware::token_decryptor_middleware_factory::TokenDecryptorMiddlewareFactory;
+use crate::services::token_decryption_service::TokenDecryptionService;
 use actix_web::dev::HttpServiceFactory;
 use actix_web::middleware::from_fn;
+use actix_web::Scope;
 use std::sync::Arc;
 
 /// Extension trait for attaching the complete audit middleware chain to an Actix [`Scope`].
@@ -22,6 +25,12 @@ pub trait AuditScope {
     /// - extracts and validates the external token (`extract_external_token`),
     /// - records the terminal audit event (`AuditRecorderFactory`).
     fn with_initial_audit_scope(self, writer: Arc<dyn AuditWriter>) -> impl HttpServiceFactory;
+
+    fn continue_audit_scope(
+        self,
+        writer: Arc<dyn AuditWriter>,
+        decryptor: Arc<TokenDecryptionService>,
+    ) -> impl HttpServiceFactory;
 }
 
 impl AuditScope for Scope {
@@ -29,5 +38,14 @@ impl AuditScope for Scope {
         self.wrap(from_fn(extract_external_token::<ExternalRequest, AuditedError>))
             .wrap(AuditRecorderFactory::<AuditedResponse<_>>::new(writer))
             .wrap(from_fn(begin_audit_chain::<ExternalRequest>))
+    }
+
+    fn continue_audit_scope(
+        self,
+        writer: Arc<dyn AuditWriter>,
+        decryptor: Arc<TokenDecryptionService>,
+    ) -> impl HttpServiceFactory {
+        self.wrap(AuditRecorderFactory::<AuditedResponse<_>>::new(writer))
+            .wrap(TokenDecryptorMiddlewareFactory::<TokenDecryptionService, InternalRequest>::new(decryptor))
     }
 }
