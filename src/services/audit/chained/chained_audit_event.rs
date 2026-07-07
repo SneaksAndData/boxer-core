@@ -43,4 +43,17 @@ impl ChainedAuditEvent {
             && self.decision.is_none()
             && self.reason.is_none()
     }
+
+    /// Creates an empty audit event with an external token id
+    pub fn external(token_id: &str) -> ChainedAuditEvent {
+        ChainedAuditEvent {
+            external_token: Some(TokenAuditEvent::external().with_token_id(token_id)),
+            internal_token: None,
+            action: None,
+            actor: None,
+            resource: None,
+            decision: None,
+            reason: None,
+        }
+    }
 }

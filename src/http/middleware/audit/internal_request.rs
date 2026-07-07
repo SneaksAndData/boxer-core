@@ -2,10 +2,14 @@
 mod tests;
 
 use super::begin_audit_chain::try_create_audit_context::TryCreateAuditContext;
-use crate::contracts::dynamic_claims_collection::DynamicClaimsCollection;
+use crate::contracts::dynamic_claims_collection::{DynamicClaims, DynamicClaimsCollection};
 use crate::contracts::internal_token::encrypted_token::EncryptedToken;
+use crate::contracts::internal_token::v1::boxer_claims::ToBoxerClaims as V1ToBoxerClaims;
+use crate::contracts::internal_token::v2::boxer_claims::ToBoxerClaims as V2ToBoxerClaims;
+use crate::contracts::upgrade_version::UpgradeVersion;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
 use crate::http::middleware::audit::audited_error::AuditedError;
+use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
 use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::http::middleware::request_with_token_id::RequestWithTokenId;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
@@ -22,6 +26,19 @@ use actix_web::HttpMessage;
 /// multiple initializations of the audit context for the same request.
 #[derive(Debug)]
 pub struct InternalRequest(ServiceRequest);
+
+impl InternalRequest {
+    fn update_audit_event<F>(&mut self, callback: F) -> Result<(), anyhow::Error>
+    where
+        F: FnOnce(&mut AuditEvent) -> Result<(), anyhow::Error>,
+    {
+        let mut extensions = self.0.extensions_mut();
+        let audit_event = extensions
+            .get_mut()
+            .ok_or_else(|| anyhow::anyhow!("Audit event not found in request extensions"))?;
+        callback(audit_event)
+    }
+}
 
 /// Implementing `Into<ServiceRequest>` allows us to easily convert an `AuditedRequest` back into
 /// a `ServiceRequest` when passing it to the next middleware or handler in the chain.
@@ -65,28 +82,6 @@ impl AuditEventSource for InternalRequest {
             .expect("Audited event not exists in request extensions")
     }
 }
-
-// impl From<ServiceRequest> for InternalRequest {
-//     /// Wraps a [`ServiceRequest`] into an [`InternalRequest`], asserting that an audit context
-//     /// is already present in request extensions.
-//     ///
-//     /// This is the counterpart to [`Into<ServiceRequest>`] and is used by the external token
-//     /// middleware to re-wrap the request after extracting the token, preserving the existing
-//     /// audit context.
-//     ///
-//     /// # Panics
-//     ///
-//     /// Panics if the request does not contain an [`AuditEvent`] extension.
-//
-//     fn from(value: ServiceRequest) -> Self {
-//         value
-//             .extensions()
-//             .get::<AuditEvent>()
-//             .cloned()
-//             .expect("Audited event not exists in request extensions");
-//         InternalRequest(value)
-//     }
-// }
 
 impl RequestWithTokenId for InternalRequest {
     type Token = EncryptedToken;
@@ -138,11 +133,67 @@ impl RequestWithTokenId for InternalRequest {
 
 impl RequestWithToken for InternalRequest {
     fn token(&self) -> EncryptedToken {
-        todo!()
+        self.0
+            .extensions()
+            .get::<EncryptedToken>()
+            .cloned()
+            .expect("Encrypted token not exists in request extensions")
     }
 
-    fn set_claims(&mut self, claims: DynamicClaimsCollection) -> ServiceRequest {
-        todo!()
+    fn try_from_request(request: ServiceRequest) -> Result<Self, AuditedError> {
+        if !request.extensions().contains::<EncryptedToken>() {
+            return Err(AuditedError::token_not_present(&request));
+        };
+
+        if request.extensions().contains::<AuditEvent>() {
+            panic!(
+                "Audited audit event duplicated in request extensions: {:?}",
+                request.extensions().get::<AuditEvent>()
+            );
+        }
+
+        let internal_request = InternalRequest(request);
+        let token = internal_request.token();
+
+        internal_request
+            .0
+            .extensions_mut()
+            .insert(AuditEvent::Intermediate(ChainedAuditEvent::external(&token.id())));
+
+        Ok(internal_request)
+    }
+
+    fn set_claims(mut self, claims: DynamicClaimsCollection) -> Result<ServiceRequest, anyhow::Error> {
+        // If we have the token version 2, we should extract the audit event from the token and
+
+        let version = claims.get_version()?;
+        let boxer_claims = match version.as_str() {
+            "v1" => {
+                let claims_v1 = V1ToBoxerClaims::to_boxer_claims(&claims)?;
+                let event = self.audit_event();
+                match event {
+                    AuditEvent::Intermediate(e) => claims_v1.upgrade_version(e),
+                    _ => anyhow::bail!("Unexpected audit event type when upgrading claims: {:?}", event),
+                }
+            }
+            "v2" => V2ToBoxerClaims::to_boxer_claims(&claims)?,
+            _ => return Err(anyhow::anyhow!("Unexpected claims version: {:?}", version)),
+        };
+
+        self.update_audit_event(|audit_event| {
+            match audit_event {
+                AuditEvent::Intermediate(ChainedAuditEvent {
+                    external_token: token, ..
+                }) => {
+                    *token = boxer_claims.audit_event.external_token.clone();
+                }
+                _ => anyhow::bail!("Unexpected audit event type when setting claims: {:?}", audit_event),
+            }
+            *audit_event = AuditEvent::Intermediate(boxer_claims.audit_event);
+            Ok(())
+        })?;
+
+        Ok(self.0)
     }
 }
 

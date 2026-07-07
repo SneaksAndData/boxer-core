@@ -134,6 +134,13 @@ impl ExternalTokenError for AuditedError {
             }
         }
     }
+
+    fn token_not_present(request: &ServiceRequest) -> Self {
+        AuditedError::token_extraction_failed(
+            &request,
+            anyhow::anyhow!("Encrypted token not present in request extensions"),
+        )
+    }
 }
 
 /// The `Display` implementation for `AuditedError` simply formats the contained `AuditEvent`

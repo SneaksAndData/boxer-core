@@ -2,7 +2,9 @@ pub mod decryptor;
 pub mod request_with_token;
 pub mod token_decryptor_middleware_factory;
 
+use crate::contracts::dynamic_claims_collection::DynamicClaims;
 use crate::http::middleware::audit::audited_error::AuditedError;
+use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
 use actix_web::dev::{forward_ready, Service, ServiceRequest, ServiceResponse};
@@ -38,13 +40,15 @@ where
         let decryptor = self.decryptor.clone();
         let next = self.next.clone();
         let future = async move {
-            let mut request_with_token = R::try_from(req)?;
-            let encrypted_token = request_with_token.token();
+            let req = R::try_from_request(req)?;
+            let encrypted_token = req.token();
+
             let claims = decryptor
                 .decrypt(encrypted_token)
                 .map_err(ErrorBadRequest)
-                .map_err(|e| AuditedError::new(request_with_token.audit_event(), e))?;
-            next.call(request_with_token.set_claims(claims)).await
+                .map_err(|e| AuditedError::new(req.audit_event(), e))?;
+
+            next.call(req.set_claims(claims).map_err(ErrorBadRequest)?).await
         };
         Box::pin(future)
     }
