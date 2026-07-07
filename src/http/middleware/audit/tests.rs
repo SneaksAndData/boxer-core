@@ -6,11 +6,13 @@ use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationResult;
 use actix_web::web::scope;
-use actix_web::{App, HttpMessage, HttpRequest, test, web};
+use actix_web::{test, web, App, HttpMessage, HttpRequest};
 use assert_matches::assert_matches;
-use cedar_policy::Decision;
+use cedar_policy::{Decision, Entity, EntityUid, SchemaFragment};
 use mockall::mock;
+use serde_json::json;
 use std::sync::Arc;
+use std::time::Duration;
 
 #[actix_web::test]
 async fn test_token_not_present() {
@@ -157,6 +159,35 @@ async fn test_successful_token() {
 
     // Act
     let _ = test::try_call_service(&service, request).await;
+
+    // Assert is in the handler above
+}
+
+#[actix_web::test]
+async fn test_token_v1() {
+    let token = crate::contracts::internal_token::v1::token::InternalToken::new();
+
+    // let scope = scope("").route(
+    //     "/token",
+    //     web::to(|request: HttpRequest| async move { actix_web::HttpResponse::Ok().finish() }),
+    // );
+    //
+    // // Arrange
+    // let mut writer = MockAuditWriter::new();
+    // writer.expect_write().times(1).returning(|_| ());
+    //
+    // let pipeline = scope.with_initial_audit_scope(Arc::new(writer));
+    // let chain = App::new() /*.app_data(Data::new(Arc::new(writer)))*/
+    //     .service(pipeline);
+    // let service = test::init_service(chain).await;
+    //
+    // let request = test::TestRequest::get()
+    //     .uri("/token")
+    //     .append_header(("Authorization", "Bearer token"))
+    //     .to_request();
+    //
+    // // Act
+    // let _ = test::try_call_service(&service, request).await;
 
     // Assert is in the handler above
 }

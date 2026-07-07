@@ -6,8 +6,8 @@ use crate::http::middleware::audit::begin_audit_chain::begin_audit_chain;
 use crate::http::middleware::audit::external_request::ExternalRequest;
 use crate::http::middleware::audit::internal_request::InternalRequest;
 use crate::http::middleware::extract_external_token::extract_external_token;
+use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::http::middleware::token_decryptor_middleware::token_decryptor_middleware_factory::TokenDecryptorMiddlewareFactory;
-use crate::services::token_decryption_service::TokenDecryptionService;
 use actix_web::dev::HttpServiceFactory;
 use actix_web::middleware::from_fn;
 use actix_web::Scope;
@@ -26,11 +26,9 @@ pub trait AuditScope {
     /// - records the terminal audit event (`AuditRecorderFactory`).
     fn with_initial_audit_scope(self, writer: Arc<dyn AuditWriter>) -> impl HttpServiceFactory;
 
-    fn continue_audit_scope(
-        self,
-        writer: Arc<dyn AuditWriter>,
-        decryptor: Arc<TokenDecryptionService>,
-    ) -> impl HttpServiceFactory;
+    fn continue_audit_scope<D>(self, writer: Arc<dyn AuditWriter>, decryptor: Arc<D>) -> impl HttpServiceFactory
+    where
+        D: Decryptor + 'static;
 }
 
 impl AuditScope for Scope {
@@ -40,12 +38,11 @@ impl AuditScope for Scope {
             .wrap(from_fn(begin_audit_chain::<ExternalRequest>))
     }
 
-    fn continue_audit_scope(
-        self,
-        writer: Arc<dyn AuditWriter>,
-        decryptor: Arc<TokenDecryptionService>,
-    ) -> impl HttpServiceFactory {
+    fn continue_audit_scope<D>(self, writer: Arc<dyn AuditWriter>, decryptor: Arc<D>) -> impl HttpServiceFactory
+    where
+        D: Decryptor + 'static,
+    {
         self.wrap(AuditRecorderFactory::<AuditedResponse<_>>::new(writer))
-            .wrap(TokenDecryptorMiddlewareFactory::<TokenDecryptionService, InternalRequest>::new(decryptor))
+            .wrap(TokenDecryptorMiddlewareFactory::<D, InternalRequest>::new(decryptor))
     }
 }
