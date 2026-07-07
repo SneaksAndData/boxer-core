@@ -32,9 +32,9 @@ pub type ResourceRepository = EntityUidRepository<(String, Vec<PathSegment>)>;
 /// Abstracts the repository that contains PolicySet objects.
 pub type PolicyRepository = dyn ReadOnlyRepository<String, PolicySet, ReadError = anyhow::Error>;
 
-pub struct CedarValidationService {
+pub struct CedarValidationService<Claims> {
     authorizer: Authorizer,
-    schema_provider: Arc<dyn SchemaProvider>,
+    schema_provider: Arc<dyn SchemaProvider<Claims>>,
     action_repository: Arc<ActionRepository>,
     resource_repository: Arc<ResourceRepository>,
     policy_repository: Arc<PolicyRepository>,
@@ -43,10 +43,10 @@ pub struct CedarValidationService {
     desision_handler: Arc<dyn DecisionHandler>,
 }
 
-impl CedarValidationService {
+impl<Claims> CedarValidationService<Claims> {
     /// Creates the new instance of the CedarValidationService
     pub fn new(
-        schema_provider: Arc<dyn SchemaProvider>,
+        schema_provider: Arc<dyn SchemaProvider<Claims>>,
         action_repository: Arc<ActionRepository>,
         resource_repository: Arc<ResourceRepository>,
         policy_repository: Arc<PolicyRepository>,
@@ -68,7 +68,7 @@ impl CedarValidationService {
 }
 
 #[async_trait]
-impl<Claims> ValidationService<Claims> for CedarValidationService
+impl<Claims> ValidationService<Claims> for CedarValidationService<Claims>
 where
     Claims: RequiredClaims + Send + Sync + 'static,
 {
@@ -76,7 +76,7 @@ where
         let ctx = start_trace("request_validation", None);
         let schema = self
             .schema_provider
-            .get_schema(claims.get_validator_schema_id().clone())
+            .get_schema(&claims)
             .with_context(ctx.clone())
             .await?;
         debug!("Cedar validation schemas: {:?}", schema);

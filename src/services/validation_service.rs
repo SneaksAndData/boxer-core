@@ -1,11 +1,11 @@
 pub mod cedar_validation_service;
 mod decision_handler;
-mod http_method;
-mod path_segment;
-mod request_context;
-mod request_segment;
-mod required_claims;
-mod schema_provider;
+pub mod http_method;
+pub mod path_segment;
+pub mod request_context;
+pub mod request_segment;
+pub mod required_claims;
+pub mod schema_provider;
 
 use crate::services::validation_service::request_context::RequestContext;
 use crate::services::validation_service::required_claims::RequiredClaims;
