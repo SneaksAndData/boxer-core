@@ -145,21 +145,11 @@ impl RequestWithToken for InternalRequest {
             return Err(AuditedError::token_not_present(&request));
         };
 
-        if request.extensions().contains::<AuditEvent>() {
-            panic!(
-                "Audited audit event duplicated in request extensions: {:?}",
-                request.extensions().get::<AuditEvent>()
-            );
+        if !request.extensions().contains::<AuditEvent>() {
+            panic!("Request does not contain AuditEvent in request extensions");
         }
 
         let internal_request = InternalRequest(request);
-        let token = internal_request.token();
-
-        internal_request
-            .0
-            .extensions_mut()
-            .insert(AuditEvent::Intermediate(ChainedAuditEvent::external(&token.id())));
-
         Ok(internal_request)
     }
 
@@ -189,10 +179,11 @@ impl RequestWithToken for InternalRequest {
                 }
                 _ => anyhow::bail!("Unexpected audit event type when setting claims: {:?}", audit_event),
             }
-            *audit_event = AuditEvent::Intermediate(boxer_claims.audit_event);
+            *audit_event = AuditEvent::Intermediate(boxer_claims.audit_event.clone());
             Ok(())
         })?;
 
+        self.0.extensions_mut().insert(boxer_claims);
         Ok(self.0)
     }
 }
@@ -200,6 +191,12 @@ impl RequestWithToken for InternalRequest {
 impl TryFrom<ServiceRequest> for InternalRequest {
     type Error = AuditedError;
     fn try_from(value: ServiceRequest) -> Result<Self, Self::Error> {
-        InternalRequest::try_from_request(value)
+        if let Some(event) = value.extensions().get::<AuditEvent>() {
+            return Err(AuditedError::audit_chain_already_exists(event.clone()));
+        }
+        value
+            .extensions_mut()
+            .insert(AuditEvent::Intermediate(ChainedAuditEvent::empty()));
+        Ok(InternalRequest(value))
     }
 }

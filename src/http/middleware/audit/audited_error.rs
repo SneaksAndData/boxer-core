@@ -20,6 +20,16 @@ pub struct AuditedError {
 }
 
 impl AuditedError {
+    pub(crate) fn audit_chain_already_exists(event: AuditEvent) -> AuditedError {
+        let cause = anyhow!("Duplicated audit event in the service request");
+        AuditedError {
+            event,
+            cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
+        }
+    }
+}
+
+impl AuditedError {
     /// Wraps a given `ResponseError` into an `AuditedError`, extracting the associated
     /// `AuditEvent` from the error's response extensions.
     pub fn new(event: AuditEvent, cause: impl Error + 'static) -> AuditedError {

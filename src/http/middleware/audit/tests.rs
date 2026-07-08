@@ -1,3 +1,4 @@
+use crate::contracts::internal_token::v2::boxer_claims::BoxerClaims;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
 use crate::http::middleware::audit::audit_scope::AuditScope;
 use crate::http::middleware::audit::audited_error::AuditedError;
@@ -24,6 +25,7 @@ use cedar_policy::SchemaFragment;
 use cedar_policy::{Entity, EntityUid};
 use mockall::mock;
 use serde_json::json;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 #[actix_web::test]
@@ -209,10 +211,20 @@ async fn test_token_v1() {
 
     let scope = scope("").route(
         "/token",
-        web::to(|| async move { actix_web::HttpResponse::Ok().finish() }),
+        web::to(|http_request: HttpRequest| async move {
+            let r = http_request.extensions().get::<BoxerClaims>();
+
+            actix_web::HttpResponse::Ok().finish()
+        }),
     );
     let mut writer = MockAuditWriter::new();
-    let encryption_keys = EncryptionKeys::default();
+    writer
+        .expect_write()
+        .times(1)
+        .returning(|_| ());
+    let mut keys = HashMap::default();
+    keys.insert("key-id".into(), "0123456789ABCDEF0123456789ABCDEF".into());
+    let mut encryption_keys = EncryptionKeys::new(keys);
     let token_validation_settings = TokenValidationSettings {
         audience: "example.com".into(),
         issuer: "example.com".into(),
@@ -228,7 +240,8 @@ async fn test_token_v1() {
     let service = test::init_service(webapp).await;
 
     // Act
-    let _ = test::try_call_service(&service, request).await;
+    let response = test::try_call_service(&service, request).await;
+    assert_eq!(response.unwrap().status(), 200);
 }
 
 fn make_principal_entity() -> Entity {
