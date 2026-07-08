@@ -1,12 +1,12 @@
-mod encryption_keys;
-mod token_settings;
+pub mod encryption_keys;
+pub mod token_settings;
 
 use crate::contracts::dynamic_claims_collection::DynamicClaimsCollection;
 use crate::contracts::internal_token::encrypted_token::EncryptedToken;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::services::token_decryption_service::encryption_keys::EncryptionKeys;
 use crate::services::token_decryption_service::token_settings::TokenValidationSettings;
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use collection_macros::hashset;
 use josekit::jwe::Dir;
 use josekit::jwt;

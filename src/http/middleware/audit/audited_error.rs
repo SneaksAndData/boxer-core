@@ -119,7 +119,10 @@ impl ExternalTokenError for AuditedError {
         let event = request
             .extensions()
             .get::<AuditEvent>()
-            .expect("Attempt to wrap a request for an error without audit event")
+            .expect(&format!(
+                "Attempt to wrap a request for an error without audit event, cause: {:?}",
+                cause
+            ))
             .clone();
         match event {
             AuditEvent::Final(_) => {

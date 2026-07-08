@@ -5,14 +5,26 @@ use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationResult;
+use crate::services::observability::open_telemetry::metrics::provider::MetricsProvider;
+use crate::services::token_decryption_service::encryption_keys::EncryptionKeys;
+use crate::services::token_decryption_service::token_settings::TokenValidationSettings;
+use crate::services::token_decryption_service::TokenDecryptionService;
+use crate::services::token_provider::encrypted_token_service::EncryptedTokenService;
+use crate::services::token_provider::external_identity::ExternalIdentity;
+use crate::services::token_provider::principal::Principal;
+use crate::services::token_provider::principal_service::PrincipalService;
+use crate::services::token_provider::TokenProvider;
 use actix_web::web::scope;
 use actix_web::{test, web, App, HttpMessage, HttpRequest};
+use anyhow::Result;
 use assert_matches::assert_matches;
-use cedar_policy::{Decision, Entity, EntityUid, SchemaFragment};
+use async_trait::async_trait;
+use cedar_policy::Decision;
+use cedar_policy::SchemaFragment;
+use cedar_policy::{Entity, EntityUid};
 use mockall::mock;
 use serde_json::json;
 use std::sync::Arc;
-use std::time::Duration;
 
 #[actix_web::test]
 async fn test_token_not_present() {
@@ -165,31 +177,87 @@ async fn test_successful_token() {
 
 #[actix_web::test]
 async fn test_token_v1() {
-    let token = crate::contracts::internal_token::v1::token::InternalToken::new();
+    // Arrange
+    let mut mock_principal_service = MockPrincipalService::new();
+    let principal = Principal::new(make_principal_entity(), "schema-v1".into());
+    let schema = make_schema_fragment();
 
-    // let scope = scope("").route(
-    //     "/token",
-    //     web::to(|request: HttpRequest| async move { actix_web::HttpResponse::Ok().finish() }),
-    // );
-    //
-    // // Arrange
-    // let mut writer = MockAuditWriter::new();
-    // writer.expect_write().times(1).returning(|_| ());
-    //
-    // let pipeline = scope.with_initial_audit_scope(Arc::new(writer));
-    // let chain = App::new() /*.app_data(Data::new(Arc::new(writer)))*/
-    //     .service(pipeline);
-    // let service = test::init_service(chain).await;
-    //
-    // let request = test::TestRequest::get()
-    //     .uri("/token")
-    //     .append_header(("Authorization", "Bearer token"))
-    //     .to_request();
-    //
-    // // Act
-    // let _ = test::try_call_service(&service, request).await;
+    mock_principal_service
+        .expect_get_principal()
+        .returning(move |_| Ok(principal.clone()));
+    mock_principal_service
+        .expect_get_schemas()
+        .returning(move |_| Ok(schema.clone()));
+    mock_principal_service
+        .expect_get_validator_schema()
+        .returning(|_| Ok("validator-schema-v1".into()));
 
-    // Assert is in the handler above
+    let token_service = EncryptedTokenService::new(
+        Arc::new(mock_principal_service),
+        Arc::new("0123456789ABCDEF0123456789ABCDEF".into()),
+        "key-id".into(),
+        "example.com".into(),
+        "example.com".into(),
+        "A128CBC-HS256".into(),
+        MetricsProvider::new("tests", "tests".into()),
+    );
+
+    let token = token_service
+        .issue_token(ExternalIdentity::new("user-id".into(), "identity-provider".into()))
+        .await
+        .unwrap();
+
+    let scope = scope("").route(
+        "/token",
+        web::to(|| async move { actix_web::HttpResponse::Ok().finish() }),
+    );
+    let mut writer = MockAuditWriter::new();
+    let encryption_keys = EncryptionKeys::default();
+    let token_validation_settings = TokenValidationSettings {
+        audience: "example.com".into(),
+        issuer: "example.com".into(),
+        keys: "".into(),
+    };
+    let decryptor = TokenDecryptionService::new(encryption_keys, token_validation_settings);
+    let pipeline = scope.continue_audit_scope(Arc::new(writer), Arc::new(decryptor));
+    let webapp = App::new().service(pipeline);
+    let request = test::TestRequest::get()
+        .uri("/token")
+        .append_header(("Authorization", token))
+        .to_request();
+    let service = test::init_service(webapp).await;
+
+    // Act
+    let _ = test::try_call_service(&service, request).await;
+}
+
+fn make_principal_entity() -> Entity {
+    let uid: EntityUid = r#"User::"alice""#.parse().unwrap();
+    Entity::new(uid, Default::default(), Default::default()).expect("to be valid")
+}
+
+fn make_schema_fragment() -> SchemaFragment {
+    let schema_json = json!({
+        "PhotoApp": {
+            "entityTypes": {
+                "User": {},
+                "Photo": {}
+            },
+            "actions": {}
+        }
+    });
+    SchemaFragment::from_json_value(schema_json).unwrap()
+}
+
+mock! {
+    pub PrincipalService {}
+
+    #[async_trait]
+    impl PrincipalService for PrincipalService {
+        async fn get_principal(&self, external_identity: ExternalIdentity) -> Result<Principal>;
+        async fn get_validator_schema(&self, external_identity: ExternalIdentity) -> Result<String>;
+        async fn get_schemas(&self, schema_id: String) -> Result<SchemaFragment, anyhow::Error>;
+    }
 }
 
 mock! {

@@ -11,3 +11,9 @@ impl EncryptionKeys {
         self.0.get(key_id)
     }
 }
+
+impl Default for EncryptionKeys {
+    fn default() -> Self {
+        EncryptionKeys(HashMap::default())
+    }
+}

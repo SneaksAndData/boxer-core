@@ -200,6 +200,6 @@ impl RequestWithToken for InternalRequest {
 impl TryFrom<ServiceRequest> for InternalRequest {
     type Error = AuditedError;
     fn try_from(value: ServiceRequest) -> Result<Self, Self::Error> {
-        todo!()
+        InternalRequest::try_from_request(value)
     }
 }

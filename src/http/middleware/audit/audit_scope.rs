@@ -6,6 +6,7 @@ use crate::http::middleware::audit::begin_audit_chain::begin_audit_chain;
 use crate::http::middleware::audit::external_request::ExternalRequest;
 use crate::http::middleware::audit::internal_request::InternalRequest;
 use crate::http::middleware::extract_external_token::extract_external_token;
+use crate::http::middleware::extract_internal_token::extract_encrypted_token;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::http::middleware::token_decryptor_middleware::token_decryptor_middleware_factory::TokenDecryptorMiddlewareFactory;
 use actix_web::dev::HttpServiceFactory;
@@ -44,5 +45,6 @@ impl AuditScope for Scope {
     {
         self.wrap(AuditRecorderFactory::<AuditedResponse<_>>::new(writer))
             .wrap(TokenDecryptorMiddlewareFactory::<D, InternalRequest>::new(decryptor))
+            .wrap(from_fn(extract_encrypted_token::<InternalRequest, AuditedError>))
     }
 }
