@@ -3,7 +3,7 @@ mod external_identity;
 mod principal;
 mod principal_service;
 
-use crate::services::token_service::external_identity::ExternalIdentity;
+use crate::services::token_provider::external_identity::ExternalIdentity;
 use async_trait::async_trait;
 
 #[async_trait]
