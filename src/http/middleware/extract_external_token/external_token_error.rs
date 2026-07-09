@@ -1,5 +1,5 @@
-use actix_web::dev::ServiceRequest;
 use actix_web::ResponseError;
+use actix_web::dev::ServiceRequest;
 
 /// Error contract for failures related to extracting the external token from an incoming request.
 ///

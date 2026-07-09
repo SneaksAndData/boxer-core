@@ -9,9 +9,9 @@ use crate::http::middleware::extract_external_token::extract_external_token;
 use crate::http::middleware::extract_internal_token::extract_encrypted_token;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::http::middleware::token_decryptor_middleware::token_decryptor_middleware_factory::TokenDecryptorMiddlewareFactory;
+use actix_web::Scope;
 use actix_web::dev::HttpServiceFactory;
 use actix_web::middleware::from_fn;
-use actix_web::Scope;
 use std::sync::Arc;
 
 /// Extension trait for attaching the complete audit middleware chain to an Actix [`Scope`].

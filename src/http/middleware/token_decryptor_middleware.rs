@@ -2,12 +2,10 @@ pub mod decryptor;
 pub mod request_with_token;
 pub mod token_decryptor_middleware_factory;
 
-use crate::contracts::dynamic_claims_collection::DynamicClaims;
 use crate::http::middleware::audit::audited_error::AuditedError;
-use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
-use actix_web::dev::{forward_ready, Service, ServiceRequest, ServiceResponse};
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse, forward_ready};
 use actix_web::error::ErrorBadRequest;
 use futures_util::future::LocalBoxFuture;
 use std::marker::PhantomData;

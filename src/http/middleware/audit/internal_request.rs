@@ -7,23 +7,19 @@ use crate::contracts::dynamic_claims_collection::{DynamicClaims, DynamicClaimsCo
 use crate::contracts::internal_token::encrypted_token::EncryptedToken;
 use crate::contracts::internal_token::v1::boxer_claims::ToBoxerClaims as V1ToBoxerClaims;
 use crate::contracts::internal_token::v2::boxer_claims::ToBoxerClaims as V2ToBoxerClaims;
-use crate::contracts::upgrade_version::UpgradeVersion;
-use crate::contracts::internal_token::v1::boxer_claims::ToBoxerClaims as V1ToBoxerClaims;
-use crate::contracts::internal_token::v2::boxer_claims::ToBoxerClaims as V2ToBoxerClaims;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
 use crate::http::middleware::audit::audited_error::AuditedError;
-use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
 use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::http::middleware::request_with_token_id::RequestWithTokenId;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
+use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
 use anyhow::bail;
 use upgrade_version::UpgradeVersion;
-use actix_web::HttpMessage;
 
 /// [`InternalRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
 /// processed by the `begin_audit_chain` middleware and has an audit context initialized.
