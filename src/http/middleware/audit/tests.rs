@@ -5,7 +5,10 @@ use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
+use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationResult;
+use crate::services::audit::AuditService;
+use crate::services::base::upsert_repository::ReadOnlyRepository;
 use crate::services::observability::open_telemetry::metrics::provider::MetricsProvider;
 use crate::services::token_decryption_service::encryption_keys::EncryptionKeys;
 use crate::services::token_decryption_service::token_settings::TokenValidationSettings;
@@ -15,17 +18,26 @@ use crate::services::token_provider::external_identity::ExternalIdentity;
 use crate::services::token_provider::principal::Principal;
 use crate::services::token_provider::principal_service::PrincipalService;
 use crate::services::token_provider::TokenProvider;
-use actix_web::web::scope;
-use actix_web::{test, web, App, HttpMessage, HttpRequest};
+use crate::services::validation_service::cedar_validation_service::CedarValidationService;
+use crate::services::validation_service::path_segment::PathSegment;
+use crate::services::validation_service::request_context::RequestContext;
+use crate::services::validation_service::request_segment::RequestSegment;
+use crate::services::validation_service::schema_provider::SchemaProvider;
+use crate::services::validation_service::{DecisionHandler, ValidationService};
+use actix_web::http::StatusCode;
+use actix_web::web::{scope, ReqData};
+use actix_web::{test, web, App, HttpMessage, HttpRequest, HttpResponse};
 use anyhow::Result;
 use assert_matches::assert_matches;
 use async_trait::async_trait;
-use cedar_policy::Decision;
+use cedar_policy::PolicySet;
 use cedar_policy::SchemaFragment;
-use cedar_policy::{Entity, EntityUid};
+use cedar_policy::{Decision, Policy};
+use cedar_policy::{Entity, EntityUid, Schema};
 use mockall::mock;
 use serde_json::json;
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 #[actix_web::test]
@@ -209,22 +221,61 @@ async fn test_token_v1() {
         .await
         .unwrap();
 
+    let mut mock_schema_provider = MockSchemaProvider::new();
+    mock_schema_provider
+        .expect_get_schema()
+        .returning(|_| Ok(Schema::from_json_value(json!({})).unwrap()));
+
+    let mut mock_action_repository = MockActionRepository::new();
+    mock_action_repository
+        .expect_get()
+        .returning(|_| Ok(r#"Action::"post""#.parse().unwrap()));
+
+    let mut mock_resource_repository = MockResourceRepository::new();
+    mock_resource_repository
+        .expect_get()
+        .returning(|_| Ok(r#"Http::"example.com""#.parse().unwrap()));
+
+    let mut mock_policy_repository = MockPolicyRepository::new();
+    mock_policy_repository.expect_get().returning(|_| {
+        Ok(PolicySet::from_policies(Policy::from_str(
+            r#"
+                    permit(principal, action, resource);
+                   "#,
+        ))
+        .unwrap())
+    });
+
+    let validation_service = Arc::new(CedarValidationService::<BoxerClaims>::new(
+        Arc::new(mock_schema_provider),
+        Arc::new(mock_action_repository),
+        Arc::new(mock_resource_repository),
+        Arc::new(mock_policy_repository),
+        Arc::new(MockAuditService::new()),
+        MetricsProvider::new("tests", "tests".into()),
+        Arc::new(MockDecisionHandler::new()),
+    ));
+
     let scope = scope("").route(
         "/token",
-        web::to(|http_request: HttpRequest| async move {
-            let r = http_request.extensions().get::<BoxerClaims>();
-
-            actix_web::HttpResponse::Ok().finish()
+        web::to({
+            move |boxer_claims: ReqData<BoxerClaims>, request_context: RequestContext| {
+                let validation_service = validation_service.clone();
+                async move {
+                    let response = validation_service
+                        .validate(boxer_claims.into_inner(), request_context)
+                        .await;
+                    HttpResponse::build(response.map(|_| StatusCode::OK).unwrap_or(StatusCode::FORBIDDEN)).finish()
+                    // HttpResponse::build(StatusCode::OK).finish()
+                }
+            }
         }),
     );
     let mut writer = MockAuditWriter::new();
-    writer
-        .expect_write()
-        .times(1)
-        .returning(|_| ());
+    writer.expect_write().times(1).returning(|_| ());
     let mut keys = HashMap::default();
     keys.insert("key-id".into(), "0123456789ABCDEF0123456789ABCDEF".into());
-    let mut encryption_keys = EncryptionKeys::new(keys);
+    let encryption_keys = EncryptionKeys::new(keys);
     let token_validation_settings = TokenValidationSettings {
         audience: "example.com".into(),
         issuer: "example.com".into(),
@@ -236,11 +287,14 @@ async fn test_token_v1() {
     let request = test::TestRequest::get()
         .uri("/token")
         .append_header(("Authorization", token))
+        .append_header(("X-Original-URL", "http://example.com"))
+        .append_header(("X-Original-Method", "POST"))
         .to_request();
     let service = test::init_service(webapp).await;
 
     // Act
     let response = test::try_call_service(&service, request).await;
+    println!("response: {:?}", response);
     assert_eq!(response.unwrap().status(), 200);
 }
 
@@ -306,5 +360,63 @@ impl MockAuditWriter {
                 )
             })
             .returning(|_| ());
+    }
+}
+
+mock! {
+    pub SchemaProvider {}
+
+    #[async_trait]
+    impl SchemaProvider<BoxerClaims> for SchemaProvider {
+        async fn get_schema(&self, claims: &BoxerClaims) -> Result<Schema>;
+    }
+}
+
+mock! {
+    pub ActionRepository {}
+
+    #[async_trait]
+    impl ReadOnlyRepository<(String, Vec<RequestSegment>), EntityUid> for ActionRepository {
+        type ReadError = anyhow::Error;
+        async fn get(&self, key: (String, Vec<RequestSegment>)) -> Result<EntityUid, anyhow::Error>;
+    }
+}
+
+mock! {
+    pub ResourceRepository {}
+
+    #[async_trait]
+    impl ReadOnlyRepository<(String, Vec<PathSegment>), EntityUid> for ResourceRepository {
+        type ReadError = anyhow::Error;
+        async fn get(&self, key: (String, Vec<PathSegment>)) -> Result<EntityUid, anyhow::Error>;
+    }
+}
+
+mock! {
+    pub PolicyRepository {}
+
+    #[async_trait]
+    impl ReadOnlyRepository<String, PolicySet> for PolicyRepository {
+        type ReadError = anyhow::Error;
+        async fn get(&self, key: String) -> Result<PolicySet, anyhow::Error>;
+    }
+}
+
+mock! {
+    pub AuditService {}
+
+    impl AuditService for AuditService {
+        fn record_authorization(&self, event: AuthorizationAuditEvent) -> Result<()>;
+        fn record_resource_deletion(&self, event: crate::services::audit::events::resource_delete_audit_event::ResourceDeleteAuditEvent) -> Result<()>;
+        fn record_resource_modification(&self, event: crate::services::audit::events::resource_modification_audit_event::ResourceModificationAuditEvent) -> Result<()>;
+        fn record_token_validation(&self, event: crate::services::audit::events::token_validation_event::TokenValidationEvent) -> Result<()>;
+    }
+}
+
+mock! {
+    pub DecisionHandler {}
+
+    impl DecisionHandler for DecisionHandler {
+        fn handle(&self, x: &EntityUid, x0: &EntityUid, x1: &EntityUid, x2: &cedar_policy::Response) -> Option<AuditEvent>;
     }
 }

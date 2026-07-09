@@ -6,9 +6,11 @@ use crate::contracts::internal_token::v2::{
     AUDIT_EVENT, PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, VALIDATOR_SCHEMA_ID_KEY,
 };
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use crate::services::validation_service::required_claims::RequiredClaims;
+use actix_web::{FromRequest, HttpMessage};
 use cedar_policy::{Entity, SchemaFragment};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// [`BoxerClaims`] represents the claims extracted from an internal token that are necessary for
 /// validation and authorization checks.
 pub struct BoxerClaims {
@@ -56,5 +58,19 @@ where
             schema_id,
             validator_schema_id,
         })
+    }
+}
+
+impl RequiredClaims for BoxerClaims {
+    fn get_validator_schema_id(&self) -> String {
+        self.validator_schema_id.clone()
+    }
+
+    fn get_principal(&self) -> Entity {
+        self.principal.clone()
+    }
+
+    fn get_schema(&self) -> SchemaFragment {
+        self.schema.clone()
     }
 }

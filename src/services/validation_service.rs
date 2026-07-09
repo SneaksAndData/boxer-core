@@ -6,6 +6,7 @@ pub mod request_context;
 pub mod request_segment;
 pub mod required_claims;
 pub mod schema_provider;
+pub use decision_handler::DecisionHandler;
 
 use crate::services::validation_service::request_context::RequestContext;
 use crate::services::validation_service::required_claims::RequiredClaims;

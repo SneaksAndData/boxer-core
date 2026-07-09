@@ -119,7 +119,7 @@ where
             resource.to_string()
         );
 
-        self.desision_handler.handle(&actor, &action, &resource, &answer);
+        // self.desision_handler.handle(&actor, &action, &resource, &answer);
 
         // self.audit
         //     .record_authorization(AuthorizationAuditEvent::new(&actor, &action, &resource, &answer))?;
