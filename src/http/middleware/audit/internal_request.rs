@@ -14,9 +14,9 @@ use crate::http::middleware::token_decryptor_middleware::request_with_token::Req
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
+use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
-use actix_web::HttpMessage;
 use anyhow::bail;
 use upgrade_version::UpgradeVersion;
 
