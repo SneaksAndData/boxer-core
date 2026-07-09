@@ -1,5 +1,5 @@
-use crate::services::token_service::external_identity::ExternalIdentity;
-use crate::services::token_service::principal::Principal;
+use crate::services::token_provider::external_identity::ExternalIdentity;
+use crate::services::token_provider::principal::Principal;
 use anyhow::Result;
 use async_trait::async_trait;
 use cedar_policy::SchemaFragment;

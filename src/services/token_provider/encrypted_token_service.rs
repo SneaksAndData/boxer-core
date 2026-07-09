@@ -7,9 +7,9 @@ use crate::services::observability::open_telemetry::metrics::metric_recorders::t
 };
 use crate::services::observability::open_telemetry::metrics::provider::MetricsProvider;
 use crate::services::service_provider::ServiceProvider;
-use crate::services::token_service::TokenProvider;
-use crate::services::token_service::external_identity::ExternalIdentity;
-use crate::services::token_service::principal_service::PrincipalService;
+use crate::services::token_provider::TokenProvider;
+use crate::services::token_provider::external_identity::ExternalIdentity;
+use crate::services::token_provider::principal_service::PrincipalService;
 use async_trait::async_trait;
 use josekit::jwe::{Dir, JweHeader};
 use josekit::jwt;
