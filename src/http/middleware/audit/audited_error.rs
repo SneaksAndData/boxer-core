@@ -79,6 +79,7 @@ impl AuditedError {
         }
     }
 }
+
 impl ExternalTokenError for AuditedError {
     /// Creates an `AuditedError` in case when the external token is not present.
     ///

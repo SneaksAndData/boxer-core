@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests;
+pub mod upgrade_version;
 
 use super::begin_audit_chain::try_create_audit_context::TryCreateAuditContext;
 use crate::contracts::dynamic_claims_collection::{DynamicClaims, DynamicClaimsCollection};
@@ -7,6 +8,8 @@ use crate::contracts::internal_token::encrypted_token::EncryptedToken;
 use crate::contracts::internal_token::v1::boxer_claims::ToBoxerClaims as V1ToBoxerClaims;
 use crate::contracts::internal_token::v2::boxer_claims::ToBoxerClaims as V2ToBoxerClaims;
 use crate::contracts::upgrade_version::UpgradeVersion;
+use crate::contracts::internal_token::v1::boxer_claims::ToBoxerClaims as V1ToBoxerClaims;
+use crate::contracts::internal_token::v2::boxer_claims::ToBoxerClaims as V2ToBoxerClaims;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
 use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
@@ -18,6 +21,8 @@ use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
+use anyhow::bail;
+use upgrade_version::UpgradeVersion;
 use actix_web::HttpMessage;
 
 /// [`InternalRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
@@ -140,19 +145,6 @@ impl RequestWithToken for InternalRequest {
             .expect("Encrypted token not exists in request extensions")
     }
 
-    fn try_from_request(request: ServiceRequest) -> Result<Self, AuditedError> {
-        if !request.extensions().contains::<EncryptedToken>() {
-            return Err(AuditedError::token_not_present(&request));
-        };
-
-        if !request.extensions().contains::<AuditEvent>() {
-            panic!("Request does not contain AuditEvent in request extensions");
-        }
-
-        let internal_request = InternalRequest(request);
-        Ok(internal_request)
-    }
-
     fn set_claims(mut self, claims: DynamicClaimsCollection) -> Result<ServiceRequest, anyhow::Error> {
         // If we have the token version 2, we should extract the audit event from the token and
 
@@ -185,6 +177,19 @@ impl RequestWithToken for InternalRequest {
 
         self.0.extensions_mut().insert(boxer_claims);
         Ok(self.0)
+    }
+
+    fn try_from_request(request: ServiceRequest) -> Result<Self, anyhow::Error> {
+        if !request.extensions().contains::<EncryptedToken>() {
+            bail!("Missing required encrypted token extension");
+        };
+
+        if !request.extensions().contains::<AuditEvent>() {
+            panic!("Request does not contain AuditEvent in request extensions");
+        }
+
+        let internal_request = InternalRequest(request);
+        Ok(internal_request)
     }
 }
 

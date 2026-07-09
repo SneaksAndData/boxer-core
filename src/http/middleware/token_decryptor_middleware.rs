@@ -40,9 +40,8 @@ where
         let decryptor = self.decryptor.clone();
         let next = self.next.clone();
         let future = async move {
-            let req = R::try_from_request(req)?;
+            let req = R::try_from_request(req).map_err(ErrorBadRequest)?;
             let encrypted_token = req.token();
-
             let claims = decryptor
                 .decrypt(encrypted_token)
                 .map_err(ErrorBadRequest)

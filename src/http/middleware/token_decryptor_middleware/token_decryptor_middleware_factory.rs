@@ -1,4 +1,5 @@
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
+use crate::http::middleware::token_decryptor_middleware::TokenDecryptorMiddleware;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
 use crate::http::middleware::token_decryptor_middleware::TokenDecryptorMiddleware;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
