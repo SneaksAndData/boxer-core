@@ -1,9 +1,8 @@
-use crate::http::middleware::audit::audited_error::AuditedError;
-use crate::http::middleware::token_decryptor_middleware::TokenDecryptorMiddleware;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
+use crate::http::middleware::token_decryptor_middleware::TokenDecryptorMiddleware;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
-use futures_util::future::{Ready, ready};
+use futures_util::future::{ready, Ready};
 use std::marker::PhantomData;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -26,14 +25,14 @@ impl<D, R> TokenDecryptorMiddlewareFactory<D, R> {
 
 impl<Next, Body, D, R> Transform<Next, ServiceRequest> for TokenDecryptorMiddlewareFactory<D, R>
 where
-    Next: Service<ServiceRequest, Response = ServiceResponse<Body>, Error = AuditedError> + 'static,
+    Next: Service<ServiceRequest, Response = ServiceResponse<Body>, Error = actix_web::Error> + 'static,
     Next::Future: 'static,
     Body: 'static,
     R: RequestWithToken + 'static,
     D: Decryptor + 'static,
 {
     type Response = ServiceResponse<Body>;
-    type Error = AuditedError;
+    type Error = actix_web::Error;
     type Transform = TokenDecryptorMiddleware<Next, D, R>;
     type InitError = ();
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
