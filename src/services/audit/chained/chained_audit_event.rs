@@ -1,6 +1,9 @@
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
+use crate::services::audit::events::authorization_audit_event::Reason;
+use cedar_policy::Decision;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 /// [`ChainedAuditEvent`] represents the information collected during the processing of a
 /// request that is relevant for auditing purposes. It includes details about the external and
@@ -35,5 +38,47 @@ impl ChainedAuditEvent {
             internal_token: None,
             policy_evaluation_result: None,
         }
+    }
+
+    pub fn action(&self) -> String {
+        self.policy_evaluation_result
+            .clone()
+            .map(|a| a.action)
+            .flatten()
+            .unwrap_or("unknown".to_string())
+    }
+
+    pub fn actor(&self) -> String {
+        self.policy_evaluation_result
+            .clone()
+            .map(|a| a.actor)
+            .flatten()
+            .unwrap_or("unknown".to_string())
+    }
+
+    pub fn resource(&self) -> String {
+        self.policy_evaluation_result
+            .clone()
+            .map(|a| a.resource)
+            .flatten()
+            .unwrap_or("unknown".to_string())
+    }
+
+    pub fn reason(&self) -> Reason {
+        self.policy_evaluation_result
+            .clone()
+            .map(|a| a.reason)
+            .flatten()
+            .unwrap_or(Reason {
+                policies: HashSet::new(),
+                errors: HashSet::new(),
+            })
+    }
+
+    pub fn decision(&self) -> Decision {
+        self.policy_evaluation_result
+            .clone()
+            .map(|a| a.decision)
+            .unwrap_or(Decision::Deny)
     }
 }
