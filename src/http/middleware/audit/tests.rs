@@ -275,7 +275,6 @@ async fn test_token_v1() {
                         .validate(boxer_claims.into_inner(), request_context, event)
                         .await;
                     HttpResponse::build(response.map(|_| StatusCode::OK).unwrap_or(StatusCode::FORBIDDEN)).finish()
-                    // HttpResponse::build(StatusCode::OK).finish()
                 }
             }
         }),

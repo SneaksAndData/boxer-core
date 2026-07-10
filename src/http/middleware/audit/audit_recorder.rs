@@ -7,7 +7,7 @@ mod tests;
 use super::audited_error::AuditedError;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
-use actix_web::dev::{Service, ServiceRequest, ServiceResponse, forward_ready};
+use actix_web::dev::{forward_ready, Service, ServiceRequest, ServiceResponse};
 use futures_util::future::LocalBoxFuture;
 use std::sync::Arc;
 
@@ -56,7 +56,8 @@ where
             match result {
                 Ok(response) => {
                     let audited: AES = AES::try_from(response)?;
-                    audit_writer.write(audited.audit_event());
+                    let event = audited.audit_event();
+                    audit_writer.write(event);
                     Ok(audited.into())
                 }
 
