@@ -1,7 +1,7 @@
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationResult;
-use cedar_policy::Decision;
 use maplit::hashset;
 
 #[derive(Debug, Clone)]
@@ -26,11 +26,7 @@ impl AuditEvent {
                 token_type: None,
             }),
             internal_token: None,
-            action: None,
-            actor: None,
-            resource: None,
-            decision: Some(Decision::Deny),
-            reason: None,
+            policy_evaluation_result: Some(PolicyEvaluationResult::empty_deny()),
         })
     }
 
@@ -45,11 +41,20 @@ impl AuditEvent {
                 token_type: None,
             }),
             internal_token: None,
-            action: None,
-            actor: None,
-            resource: None,
-            decision: Some(Decision::Deny),
-            reason: None,
+            policy_evaluation_result: Some(PolicyEvaluationResult::empty_deny()),
         })
+    }
+
+    pub fn finalize(&mut self, result: PolicyEvaluationResult) {
+        match self {
+            AuditEvent::Intermediate(e) => {
+                *self = AuditEvent::Final(ChainedAuditEvent {
+                    external_token: e.external_token.clone(),
+                    internal_token: e.internal_token.clone(),
+                    policy_evaluation_result: Some(result),
+                })
+            }
+            _ => panic!("Cannot finalize an AuditEvent that is already Final"),
+        }
     }
 }

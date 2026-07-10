@@ -1,6 +1,5 @@
+use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use crate::services::audit::events::authorization_audit_event::Reason;
-use cedar_policy::Decision;
 use serde::{Deserialize, Serialize};
 
 /// [`ChainedAuditEvent`] represents the information collected during the processing of a
@@ -11,12 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct ChainedAuditEvent {
     pub external_token: Option<TokenAuditEvent>,
     pub internal_token: Option<TokenAuditEvent>,
-
-    pub action: Option<String>,
-    pub actor: Option<String>,
-    pub resource: Option<String>,
-    pub decision: Option<Decision>,
-    pub reason: Option<Reason>,
+    pub policy_evaluation_result: Option<PolicyEvaluationResult>,
 }
 
 impl ChainedAuditEvent {
@@ -25,23 +19,13 @@ impl ChainedAuditEvent {
         ChainedAuditEvent {
             external_token: None,
             internal_token: None,
-            action: None,
-            actor: None,
-            resource: None,
-            decision: None,
-            reason: None,
+            policy_evaluation_result: None,
         }
     }
 
     /// Checks if the `ChainedAuditEvent` is empty
     pub fn is_empty(&self) -> bool {
-        self.external_token.is_none()
-            && self.internal_token.is_none()
-            && self.action.is_none()
-            && self.actor.is_none()
-            && self.resource.is_none()
-            && self.decision.is_none()
-            && self.reason.is_none()
+        self.external_token.is_none() && self.internal_token.is_none() && self.policy_evaluation_result.is_none()
     }
 
     /// Creates an empty audit event with an external token id
@@ -49,11 +33,7 @@ impl ChainedAuditEvent {
         ChainedAuditEvent {
             external_token: Some(TokenAuditEvent::external().with_token_id(token_id)),
             internal_token: None,
-            action: None,
-            actor: None,
-            resource: None,
-            decision: None,
-            reason: None,
+            policy_evaluation_result: None,
         }
     }
 }

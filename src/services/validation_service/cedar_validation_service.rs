@@ -1,3 +1,6 @@
+use crate::services::audit::chained::audit_event::AuditEvent;
+use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::AuditService;
 use crate::services::base::upsert_repository::ReadOnlyRepository;
 use crate::services::observability::open_telemetry::metrics::authorization_metric::AuthorizationMetric;
@@ -6,13 +9,13 @@ use crate::services::observability::open_telemetry::metrics::metric_recorders::t
 use crate::services::observability::open_telemetry::metrics::provider::MetricsProvider;
 use crate::services::observability::open_telemetry::tracing::start_trace;
 use crate::services::service_provider::ServiceProvider;
-use crate::services::validation_service::ValidationService;
 use crate::services::validation_service::decision_handler::DecisionHandler;
 use crate::services::validation_service::path_segment::PathSegment;
 use crate::services::validation_service::request_context::RequestContext;
 use crate::services::validation_service::request_segment::RequestSegment;
 use crate::services::validation_service::required_claims::RequiredClaims;
 use crate::services::validation_service::schema_provider::SchemaProvider;
+use crate::services::validation_service::ValidationService;
 use async_trait::async_trait;
 use cedar_policy::{Authorizer, Context, Entities, EntityUid, PolicySet, Request};
 use log::{debug, info};
@@ -71,7 +74,12 @@ impl<Claims> ValidationService<Claims> for CedarValidationService<Claims>
 where
     Claims: RequiredClaims + Send + Sync + 'static,
 {
-    async fn validate(&self, claims: Claims, request_context: RequestContext) -> Result<(), anyhow::Error> {
+    async fn validate(
+        &self,
+        claims: Claims,
+        request_context: RequestContext,
+        event: &mut AuditEvent,
+    ) -> Result<(), anyhow::Error> {
         let ctx = start_trace("request_validation", None);
         let schema = self
             .schema_provider
@@ -117,6 +125,14 @@ where
             action.to_string(),
             resource.to_string()
         );
+
+        event.finalize(PolicyEvaluationResult::from_result(
+            action.to_string(),
+            actor.to_string(),
+            resource.to_string(),
+            answer.diagnostics().into(),
+            answer.decision(),
+        ));
 
         // self.desision_handler.handle(&actor, &action, &resource, &answer);
 

@@ -1,5 +1,4 @@
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
-use crate::services::audit::AuditService;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
 use crate::services::audit::events::resource_delete_audit_event::ResourceDeleteAuditEvent;
@@ -7,6 +6,7 @@ use crate::services::audit::events::resource_modification_audit_event::{
     ModificationResult, ResourceModificationAuditEvent,
 };
 use crate::services::audit::events::token_validation_event::TokenValidationEvent;
+use crate::services::audit::AuditService;
 use anyhow::Result;
 use std::collections::HashSet;
 
@@ -132,17 +132,17 @@ impl AuditWriter for LogAuditService {
 
             // The event decomposition for structured logging
             is_final = is_final,
-            action = payload.action,
-            actor = payload.actor,
-            resource = payload.resource,
-            decision:serde = payload.decision,
-            reason_policies:serde = payload.reason.clone().map_or(HashSet::new(), |r| r.policies),
-            reason_errors:serde = payload.reason.map(|r| r.errors).unwrap_or(HashSet::new()),
+            action = payload.policy_evaluation_result.action,
+            actor = payload.policy_evaluation_result.actor,
+            resource = payload.policy_evaluation_result.resource,
+            decision:serde = payload.policy_evaluation_result.decision,
+            reason_policies:serde = payload.policy_evaluation_result.reason.clone().map_or(HashSet::new(), |r| r.policies),
+            reason_errors:serde = payload.policy_evaluation_result.reason.map(|r| r.errors).unwrap_or(HashSet::new()),
             external_token_id = payload.external_token.or(None).map(|t| t.token_id),
             internal_token_id = payload.internal_token.or(None).map(|t| t.token_id);
 
             // The log message
-            "Boxer audit event recorded with decision: {:?}", payload.decision
+            "Boxer audit event recorded with decision: {:?}", payload.policy_evaluation_result.decision
         );
     }
 }
