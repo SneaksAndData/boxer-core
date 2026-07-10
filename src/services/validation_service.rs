@@ -1,12 +1,10 @@
 pub mod cedar_validation_service;
-mod decision_handler;
 pub mod http_method;
 pub mod path_segment;
 pub mod request_context;
 pub mod request_segment;
 pub mod required_claims;
 pub mod schema_provider;
-pub use decision_handler::DecisionHandler;
 
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::validation_service::request_context::RequestContext;

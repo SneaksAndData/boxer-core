@@ -6,9 +6,7 @@ use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationResult;
-use crate::services::audit::AuditService;
 use crate::services::base::upsert_repository::ReadOnlyRepository;
 use crate::services::observability::open_telemetry::metrics::provider::MetricsProvider;
 use crate::services::token_decryption_service::encryption_keys::EncryptionKeys;
@@ -24,7 +22,7 @@ use crate::services::validation_service::path_segment::PathSegment;
 use crate::services::validation_service::request_context::RequestContext;
 use crate::services::validation_service::request_segment::RequestSegment;
 use crate::services::validation_service::schema_provider::SchemaProvider;
-use crate::services::validation_service::{DecisionHandler, ValidationService};
+use crate::services::validation_service::ValidationService;
 use actix_web::http::StatusCode;
 use actix_web::web::{scope, ReqData};
 use actix_web::{test, web, App, HttpMessage, HttpRequest, HttpResponse};
@@ -258,9 +256,7 @@ async fn test_token_v1() {
         Arc::new(mock_action_repository),
         Arc::new(mock_resource_repository),
         Arc::new(mock_policy_repository),
-        Arc::new(MockAuditService::new()),
         MetricsProvider::new("tests", "tests".into()),
-        Arc::new(MockDecisionHandler::new()),
     ));
 
     let scope = scope("").route(
@@ -409,24 +405,5 @@ mock! {
     impl ReadOnlyRepository<String, PolicySet> for PolicyRepository {
         type ReadError = anyhow::Error;
         async fn get(&self, key: String) -> Result<PolicySet, anyhow::Error>;
-    }
-}
-
-mock! {
-    pub AuditService {}
-
-    impl AuditService for AuditService {
-        fn record_authorization(&self, event: AuthorizationAuditEvent) -> Result<()>;
-        fn record_resource_deletion(&self, event: crate::services::audit::events::resource_delete_audit_event::ResourceDeleteAuditEvent) -> Result<()>;
-        fn record_resource_modification(&self, event: crate::services::audit::events::resource_modification_audit_event::ResourceModificationAuditEvent) -> Result<()>;
-        fn record_token_validation(&self, event: crate::services::audit::events::token_validation_event::TokenValidationEvent) -> Result<()>;
-    }
-}
-
-mock! {
-    pub DecisionHandler {}
-
-    impl DecisionHandler for DecisionHandler {
-        fn handle(&self, x: &EntityUid, x0: &EntityUid, x1: &EntityUid, x2: &cedar_policy::Response) -> Option<AuditEvent>;
     }
 }
