@@ -158,13 +158,7 @@ async fn test_successful_token() {
                         token_type: Some(token_type)
                     }),
                     internal_token: None,
-                    policy_evaluation_result: Some(PolicyEvaluationResult{
-                    action: None,
-                    actor: None,
-                    resource: None,
-                    decision: Decision::Deny,
-                    reason: None
-                    })
+                    policy_evaluation_result: None
                 }) => {
                     assert_eq!(token_type, "external".to_string());
                 }
