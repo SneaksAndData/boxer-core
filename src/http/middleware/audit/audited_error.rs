@@ -20,6 +20,16 @@ pub struct AuditedError {
 }
 
 impl AuditedError {
+    pub(crate) fn audit_chain_already_exists(event: AuditEvent) -> AuditedError {
+        let cause = anyhow!("Duplicated audit event in the service request");
+        AuditedError {
+            event,
+            cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
+        }
+    }
+}
+
+impl AuditedError {
     /// Wraps a given `ResponseError` into an `AuditedError`, extracting the associated
     /// `AuditEvent` from the error's response extensions.
     pub fn new(event: AuditEvent, cause: impl Error + 'static) -> AuditedError {
@@ -120,7 +130,10 @@ impl ExternalTokenError for AuditedError {
         let event = request
             .extensions()
             .get::<AuditEvent>()
-            .expect("Attempt to wrap a request for an error without audit event")
+            .expect(&format!(
+                "Attempt to wrap a request for an error without audit event, cause: {:?}",
+                cause
+            ))
             .clone();
         match event {
             AuditEvent::Final(_) => {
@@ -134,6 +147,13 @@ impl ExternalTokenError for AuditedError {
                 panic!("Non-empty audit event when token is not present: {:?}", data)
             }
         }
+    }
+
+    fn token_not_present(request: &ServiceRequest) -> Self {
+        AuditedError::token_extraction_failed(
+            &request,
+            anyhow::anyhow!("Encrypted token not present in request extensions"),
+        )
     }
 }
 

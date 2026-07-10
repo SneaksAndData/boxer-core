@@ -1,5 +1,5 @@
-use crate::services::audit::AuditService;
-use crate::services::audit::events::authorization_audit_event::AuthorizationAuditEvent;
+use crate::services::audit::chained::audit_event::AuditEvent;
+use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::base::upsert_repository::ReadOnlyRepository;
 use crate::services::observability::open_telemetry::metrics::authorization_metric::AuthorizationMetric;
 use crate::services::observability::open_telemetry::metrics::metric_recorders::token_accepted::TokenAccepted;
@@ -37,7 +37,6 @@ pub struct CedarValidationService<Claims> {
     action_repository: Arc<ActionRepository>,
     resource_repository: Arc<ResourceRepository>,
     policy_repository: Arc<PolicyRepository>,
-    audit: Arc<dyn AuditService>,
     metrics_provider: MetricsProvider,
 }
 
@@ -48,7 +47,6 @@ impl<Claims> CedarValidationService<Claims> {
         action_repository: Arc<ActionRepository>,
         resource_repository: Arc<ResourceRepository>,
         policy_repository: Arc<PolicyRepository>,
-        audit: Arc<dyn AuditService>,
         metrics_provider: MetricsProvider,
     ) -> Self {
         CedarValidationService {
@@ -57,7 +55,6 @@ impl<Claims> CedarValidationService<Claims> {
             action_repository,
             resource_repository,
             policy_repository,
-            audit,
             metrics_provider,
         }
     }
@@ -68,7 +65,12 @@ impl<Claims> ValidationService<Claims> for CedarValidationService<Claims>
 where
     Claims: RequiredClaims + Send + Sync + 'static,
 {
-    async fn validate(&self, claims: Claims, request_context: RequestContext) -> Result<(), anyhow::Error> {
+    async fn validate(
+        &self,
+        claims: Claims,
+        request_context: RequestContext,
+        event: &mut AuditEvent,
+    ) -> Result<(), anyhow::Error> {
         let ctx = start_trace("request_validation", None);
         let schema = self
             .schema_provider
@@ -115,8 +117,13 @@ where
             resource.to_string()
         );
 
-        self.audit
-            .record_authorization(AuthorizationAuditEvent::new(&actor, &action, &resource, &answer))?;
+        event.finalize(PolicyEvaluationResult::from_result(
+            action.to_string(),
+            actor.to_string(),
+            resource.to_string(),
+            answer.diagnostics().into(),
+            answer.decision(),
+        ));
 
         match answer.decision() {
             cedar_policy::Decision::Allow => {

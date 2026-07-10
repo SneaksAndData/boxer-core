@@ -3,6 +3,7 @@ mod tests;
 
 use super::begin_audit_chain::try_create_audit_context::TryCreateAuditContext;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
+use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::http::middleware::request_with_token_id::RequestWithTokenId;
 use crate::models::external_token::ExternalToken;
@@ -63,7 +64,9 @@ impl AuditEventSource for ExternalRequest {
     }
 }
 
-impl From<ServiceRequest> for ExternalRequest {
+impl TryFrom<ServiceRequest> for ExternalRequest {
+    type Error = AuditedError;
+
     /// Wraps a [`ServiceRequest`] into an [`ExternalRequest`], asserting that an audit context
     /// is already present in request extensions.
     ///
@@ -75,13 +78,13 @@ impl From<ServiceRequest> for ExternalRequest {
     ///
     /// Panics if the request does not contain an [`AuditEvent`] extension.
 
-    fn from(value: ServiceRequest) -> Self {
+    fn try_from(value: ServiceRequest) -> Result<Self, Self::Error> {
         value
             .extensions()
             .get::<AuditEvent>()
             .cloned()
             .expect("Audited event not exists in request extensions");
-        ExternalRequest(value)
+        Ok(ExternalRequest(value))
     }
 }
 

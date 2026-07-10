@@ -44,6 +44,7 @@ where
                 .decrypt(encrypted_token)
                 .map_err(ErrorBadRequest)
                 .map_err(|e| AuditedError::new(req.audit_event(), e))?;
+
             next.call(req.set_claims(claims).map_err(ErrorBadRequest)?).await
         };
         Box::pin(future)

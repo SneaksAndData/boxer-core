@@ -1,3 +1,4 @@
+use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use actix_web::dev::ServiceRequest;
 
@@ -6,7 +7,7 @@ use actix_web::dev::ServiceRequest;
 /// Implementations are responsible for validating that audit context exists in request
 /// extensions and that adding the token id does not violate domain invariants
 /// (for example, duplicate token identifiers).
-pub trait RequestWithTokenId: From<ServiceRequest> {
+pub trait RequestWithTokenId: TryFrom<ServiceRequest, Error = AuditedError> {
     /// Token type used to derive the external token identifier.
     type Token: TokenWithId + Clone;
 

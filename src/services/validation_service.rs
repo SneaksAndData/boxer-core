@@ -6,6 +6,7 @@ pub mod request_segment;
 pub mod required_claims;
 pub mod schema_provider;
 
+use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::validation_service::request_context::RequestContext;
 use crate::services::validation_service::required_claims::RequiredClaims;
 use async_trait::async_trait;
@@ -13,5 +14,10 @@ use async_trait::async_trait;
 /// Validates the Claims and RequestContext against the policies and schemas defined in the system.
 #[async_trait]
 pub trait ValidationService<Claims: RequiredClaims>: Send + Sync {
-    async fn validate(&self, boxer_claims: Claims, request_context: RequestContext) -> Result<(), anyhow::Error>;
+    async fn validate(
+        &self,
+        boxer_claims: Claims,
+        request_context: RequestContext,
+        event: &mut AuditEvent,
+    ) -> Result<(), anyhow::Error>;
 }

@@ -12,4 +12,8 @@ pub trait ExternalTokenError: ResponseError {
     /// Builds an error for requests where the `Authorization` header exists
     /// but the token cannot be extracted or parsed.
     fn token_extraction_failed(request: &ServiceRequest, cause: anyhow::Error) -> Self;
+
+    /// Builds an error for the cases when the HTTP pipeline encounters a duplicated
+    /// [`EncryptedToken`] in the request.
+    fn token_not_present(request: &ServiceRequest) -> Self;
 }

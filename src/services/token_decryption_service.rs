@@ -1,5 +1,5 @@
-mod encryption_keys;
-mod token_settings;
+pub mod encryption_keys;
+pub mod token_settings;
 
 use crate::contracts::dynamic_claims_collection::DynamicClaimsCollection;
 use crate::contracts::internal_token::encrypted_token::EncryptedToken;

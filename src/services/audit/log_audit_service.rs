@@ -8,7 +8,6 @@ use crate::services::audit::events::resource_modification_audit_event::{
 };
 use crate::services::audit::events::token_validation_event::TokenValidationEvent;
 use anyhow::Result;
-use std::collections::HashSet;
 
 pub struct LogAuditService;
 
@@ -126,23 +125,27 @@ impl AuditWriter for LogAuditService {
             AuditEvent::Intermediate(e) => (e, false),
         };
 
+        let decision = payload.decision();
+        let reason = payload.reason();
+        let external_token_id = payload.external_token.as_ref().and_then(|t| t.token_id.clone());
+        let internal_token_id = payload.internal_token.as_ref().and_then(|t| t.token_id.clone());
         log::info!(
             // Indicates the audit events for easier filtering in log aggregation systems
             log_type = "audit",
 
             // The event decomposition for structured logging
             is_final = is_final,
-            action = payload.action,
-            actor = payload.actor,
-            resource = payload.resource,
-            decision:serde = payload.decision,
-            reason_policies:serde = payload.reason.clone().map_or(HashSet::new(), |r| r.policies),
-            reason_errors:serde = payload.reason.map(|r| r.errors).unwrap_or(HashSet::new()),
-            external_token_id = payload.external_token.or(None).map(|t| t.token_id),
-            internal_token_id = payload.internal_token.or(None).map(|t| t.token_id);
+            action = payload.action(),
+            actor = payload.actor(),
+            resource = payload.resource(),
+            decision:serde = decision,
+            reason_policies:serde = reason.policies,
+            reason_errors:serde = reason.errors,
+            external_token_id = external_token_id,
+            internal_token_id = internal_token_id;
 
             // The log message
-            "Boxer audit event recorded with decision: {:?}", payload.decision
+            "Boxer audit event recorded with decision: {:?}", decision
         );
     }
 }

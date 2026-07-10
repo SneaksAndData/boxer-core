@@ -8,6 +8,7 @@ use crate::contracts::internal_token::encrypted_token::EncryptedToken;
 use crate::contracts::internal_token::v1::boxer_claims::ToBoxerClaims as V1ToBoxerClaims;
 use crate::contracts::internal_token::v2::boxer_claims::ToBoxerClaims as V2ToBoxerClaims;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
+use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::http::middleware::request_with_token_id::RequestWithTokenId;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
@@ -80,28 +81,6 @@ impl AuditEventSource for InternalRequest {
             .get::<AuditEvent>()
             .cloned()
             .expect("Audited event not exists in request extensions")
-    }
-}
-
-impl From<ServiceRequest> for InternalRequest {
-    /// Wraps a [`ServiceRequest`] into an [`InternalRequest`], asserting that an audit context
-    /// is already present in request extensions.
-    ///
-    /// This is the counterpart to [`Into<ServiceRequest>`] and is used by the external token
-    /// middleware to re-wrap the request after extracting the token, preserving the existing
-    /// audit context.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the request does not contain an [`AuditEvent`] extension.
-
-    fn from(value: ServiceRequest) -> Self {
-        value
-            .extensions()
-            .get::<AuditEvent>()
-            .cloned()
-            .expect("Audited event not exists in request extensions");
-        InternalRequest(value)
     }
 }
 
@@ -207,5 +186,18 @@ impl RequestWithToken for InternalRequest {
 
         let internal_request = InternalRequest(request);
         Ok(internal_request)
+    }
+}
+
+impl TryFrom<ServiceRequest> for InternalRequest {
+    type Error = AuditedError;
+    fn try_from(value: ServiceRequest) -> Result<Self, Self::Error> {
+        if let Some(event) = value.extensions().get::<AuditEvent>() {
+            return Err(AuditedError::audit_chain_already_exists(event.clone()));
+        }
+        value
+            .extensions_mut()
+            .insert(AuditEvent::Intermediate(ChainedAuditEvent::empty()));
+        Ok(InternalRequest(value))
     }
 }

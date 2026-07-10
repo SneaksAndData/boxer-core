@@ -10,4 +10,8 @@ impl EncryptionKeys {
     pub fn get(&self, key_id: &str) -> Option<&String> {
         self.0.get(key_id)
     }
+
+    pub fn new(data: HashMap<String, String>) -> Self {
+        EncryptionKeys(data)
+    }
 }

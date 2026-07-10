@@ -56,7 +56,8 @@ where
             match result {
                 Ok(response) => {
                     let audited: AES = AES::try_from(response)?;
-                    audit_writer.write(audited.audit_event());
+                    let event = audited.audit_event();
+                    audit_writer.write(event);
                     Ok(audited.into())
                 }
 

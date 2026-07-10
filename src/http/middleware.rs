@@ -31,7 +31,7 @@ where
         Some(header_value) => {
             let token =
                 Request::Token::try_from(header_value).map_err(|e| Error::token_extraction_failed(&request, e))?;
-            next.call(Request::from(request).add_token(token)).await
+            next.call(Request::try_from(request)?.add_token(token)).await
         }
     }
 }
