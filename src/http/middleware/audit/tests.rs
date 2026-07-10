@@ -9,23 +9,23 @@ use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationResult;
 use crate::services::base::upsert_repository::ReadOnlyRepository;
 use crate::services::observability::open_telemetry::metrics::provider::MetricsProvider;
-use crate::services::token_decryption_service::TokenDecryptionService;
 use crate::services::token_decryption_service::encryption_keys::EncryptionKeys;
 use crate::services::token_decryption_service::token_settings::TokenValidationSettings;
-use crate::services::token_provider::TokenProvider;
+use crate::services::token_decryption_service::TokenDecryptionService;
 use crate::services::token_provider::encrypted_token_service::EncryptedTokenService;
 use crate::services::token_provider::external_identity::ExternalIdentity;
 use crate::services::token_provider::principal::Principal;
 use crate::services::token_provider::principal_service::PrincipalService;
-use crate::services::validation_service::ValidationService;
+use crate::services::token_provider::TokenProvider;
 use crate::services::validation_service::cedar_validation_service::CedarValidationService;
 use crate::services::validation_service::path_segment::PathSegment;
 use crate::services::validation_service::request_context::RequestContext;
 use crate::services::validation_service::request_segment::RequestSegment;
 use crate::services::validation_service::schema_provider::SchemaProvider;
+use crate::services::validation_service::ValidationService;
 use actix_web::http::StatusCode;
-use actix_web::web::{ReqData, scope};
-use actix_web::{App, HttpMessage, HttpRequest, HttpResponse, test, web};
+use actix_web::web::{scope, ReqData};
+use actix_web::{test, web, App, HttpMessage, HttpRequest, HttpResponse};
 use anyhow::Result;
 use assert_matches::assert_matches;
 use async_trait::async_trait;
@@ -270,7 +270,7 @@ async fn test_token_v1() {
         }),
     );
     let mut writer = MockAuditWriter::new();
-    writer.expect_write().times(1).returning(|_| ());
+    writer.expect_final_success_event();
     let mut keys = HashMap::default();
     keys.insert("key-id".into(), "0123456789ABCDEF0123456789ABCDEF".into());
     let encryption_keys = EncryptionKeys::new(keys);
@@ -357,6 +357,39 @@ impl MockAuditWriter {
                             reason: None
                         })
                     })
+                )
+            })
+            .returning(|_| ());
+    }
+
+    fn expect_final_success_event(&mut self) -> () {
+        self.expect_write()
+            .times(1)
+            .withf(|event| {
+                matches!(
+                    event,
+                    AuditEvent::Final(ChainedAuditEvent {
+                        external_token: None,
+                        internal_token: Some(TokenAuditEvent {
+                            token_id: Some(token_id),
+                            result: None,
+                            reason_errors,
+                            token_type: Some(token_type),
+                        }),
+                        policy_evaluation_result: Some(PolicyEvaluationResult {
+                            action: Some(action),
+                            actor: Some(actor),
+                            resource: Some(resource),
+                            reason: Some(reason),
+                            decision: Decision::Allow,
+                        })
+                    }) if reason_errors.is_empty()
+                        && token_type == "external"
+                        && action == r#"Action::"post""#
+                        && actor == r#"User::"alice""#
+                        && resource == r#"Http::"example.com""#
+                        && reason.policies.contains("policy0")
+                        && reason.errors.is_empty()
                 )
             })
             .returning(|_| ());
