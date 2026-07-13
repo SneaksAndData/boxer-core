@@ -284,7 +284,7 @@ async fn test_token_v1() {
     let webapp = App::new().service(pipeline);
     let request = test::TestRequest::get()
         .uri("/token")
-        .append_header(("Authorization", token))
+        .append_header(("Authorization", format!("Bearer {}", token)))
         .append_header(("X-Original-URL", "http://example.com"))
         .append_header(("X-Original-Method", "POST"))
         .to_request();
