@@ -1,5 +1,5 @@
 use crate::contracts::dynamic_claims_collection::DynamicClaimsCollection;
-use crate::contracts::internal_token::v1::boxer_claims::{BoxerClaims, ToBoxerClaims};
+use crate::contracts::internal_token::v2::boxer_claims::{BoxerClaims, ToBoxerClaims};
 use actix_web::{FromRequest, HttpMessage, HttpRequest};
 use anyhow::anyhow;
 use futures_util::future::{Ready, ready};
