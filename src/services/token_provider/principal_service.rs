@@ -1,4 +1,4 @@
-use crate::services::token_provider::external_identity::ExternalIdentity;
+use crate::services::external_identity_validator::external_identity::ExternalIdentity;
 use crate::services::token_provider::principal::Principal;
 use anyhow::Result;
 use async_trait::async_trait;

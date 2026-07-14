@@ -1,6 +1,9 @@
 pub mod audit;
 pub mod backends;
 pub mod base;
+pub mod external_identity_validator;
+pub mod external_identity_validator_factory;
+pub mod external_identity_validator_provider;
 pub mod observability;
 pub mod service_provider;
 pub mod token_decryption_service;

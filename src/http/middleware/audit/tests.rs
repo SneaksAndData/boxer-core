@@ -8,13 +8,13 @@ use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationR
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationResult;
 use crate::services::base::upsert_repository::ReadOnlyRepository;
+use crate::services::external_identity_validator::external_identity::ExternalIdentity;
 use crate::services::observability::open_telemetry::metrics::provider::MetricsProvider;
 use crate::services::token_decryption_service::TokenDecryptionService;
 use crate::services::token_decryption_service::encryption_keys::EncryptionKeys;
 use crate::services::token_decryption_service::token_settings::TokenValidationSettings;
 use crate::services::token_provider::TokenProvider;
 use crate::services::token_provider::encrypted_token_service::EncryptedTokenService;
-use crate::services::token_provider::external_identity::ExternalIdentity;
 use crate::services::token_provider::principal::Principal;
 use crate::services::token_provider::principal_service::PrincipalService;
 use crate::services::validation_service::ValidationService;
@@ -216,7 +216,7 @@ async fn test_token_v1() {
     );
 
     let token = token_service
-        .issue_token(ExternalIdentity::new("user-id".into(), "identity-provider".into()))
+        .issue_token(ExternalIdentity::for_test("user-id", "identity-provider"))
         .await
         .unwrap();
 

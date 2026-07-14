@@ -1,9 +1,8 @@
 pub mod encrypted_token_service;
-pub mod external_identity;
 pub mod principal;
 pub mod principal_service;
 
-use crate::services::token_provider::external_identity::ExternalIdentity;
+use crate::services::external_identity_validator::external_identity::ExternalIdentity;
 use async_trait::async_trait;
 
 #[async_trait]
