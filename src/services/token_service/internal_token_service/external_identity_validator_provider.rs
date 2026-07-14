@@ -1,7 +1,7 @@
 pub mod external_identity_provider;
 
 use crate::services::external_identity_validator::ExternalIdentityValidator;
-use crate::services::external_identity_validator_provider::external_identity_provider::ExternalIdentityProvider;
+use crate::services::token_service::internal_token_service::external_identity_validator_provider::external_identity_provider::ExternalIdentityProvider;
 use async_trait::async_trait;
 use std::sync::Arc;
 
