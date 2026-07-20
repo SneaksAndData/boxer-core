@@ -1,7 +1,7 @@
 pub mod principal;
 pub mod principal_service;
 
-use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::external_identity_validator::external_identity::ExternalIdentity;
 use async_trait::async_trait;
 
@@ -13,6 +13,6 @@ pub trait TokenProvider: Send + Sync + 'static {
     async fn issue_token(
         &self,
         external_token: ExternalIdentity,
-        audit_event: ChainedAuditEvent,
+        audit_event: TokenAuditEvent,
     ) -> Result<String, anyhow::Error>;
 }

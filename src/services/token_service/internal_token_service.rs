@@ -1,5 +1,5 @@
 use crate::models::external_token::ExternalToken;
-use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::token_service::internal_token_service::external_identity_validator_provider::external_identity_provider::ExternalIdentityProvider;
 use crate::services::token_service::TokenService;
 use anyhow::Result;
@@ -35,7 +35,7 @@ impl TokenService for InternalTokenService {
         &self,
         ip: ExternalIdentityProvider,
         token: ExternalToken,
-        chained_audit_event: ChainedAuditEvent,
+        chained_audit_event: TokenAuditEvent,
     ) -> Result<String> {
         let validator = self.validator_provider.get(ip).await?;
         let external_identity = validator.validate(token).await?;

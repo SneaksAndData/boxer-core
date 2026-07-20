@@ -1,7 +1,7 @@
 use crate::contracts::dynamic_claims_collection::DynamicClaims;
 use crate::contracts::internal_token::v2::boxer_claims::ToBoxerClaims;
 use crate::contracts::internal_token::v2::internal_token::InternalToken;
-use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use cedar_policy::{Entity, EntityUid, SchemaFragment};
 use josekit::jwt::JwtPayload;
 use serde_json::json;
@@ -17,7 +17,12 @@ fn test_serialization_integrity() {
         "schema-v1".to_string(),
         Duration::from_secs(600),
         "validator-schema-v1".to_string(),
-        ChainedAuditEvent::empty(),
+        TokenAuditEvent {
+            token_id: None,
+            result: None,
+            reason_errors: Default::default(),
+            token_type: None,
+        },
     );
 
     let jwt: JwtPayload = token.try_into().expect("to jwt");
@@ -48,7 +53,12 @@ fn test_get_version() {
         "schema-v1".to_string(),
         Duration::from_secs(600),
         "validator-schema-v1".to_string(),
-        ChainedAuditEvent::empty(),
+        TokenAuditEvent {
+            token_id: None,
+            result: None,
+            reason_errors: Default::default(),
+            token_type: None,
+        },
     );
 
     let jwt: JwtPayload = token.try_into().expect("to jwt");

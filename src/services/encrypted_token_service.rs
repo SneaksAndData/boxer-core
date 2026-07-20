@@ -1,5 +1,5 @@
 use crate::contracts::internal_token::v2::internal_token::InternalToken;
-use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::external_identity_validator::external_identity::ExternalIdentity;
 use crate::services::observability::open_telemetry::metrics::metric_recorders::token_issued::{
     TokenIssued, TokenIssuedMetric,
@@ -9,8 +9,8 @@ use crate::services::observability::open_telemetry::metrics::metric_recorders::t
 };
 use crate::services::observability::open_telemetry::metrics::provider::MetricsProvider;
 use crate::services::service_provider::ServiceProvider;
-use crate::services::token_service::internal_token_service::token_provider::TokenProvider;
 use crate::services::token_service::internal_token_service::token_provider::principal_service::PrincipalService;
+use crate::services::token_service::internal_token_service::token_provider::TokenProvider;
 use async_trait::async_trait;
 use josekit::jwe::{Dir, JweHeader};
 use josekit::jwt;
@@ -34,7 +34,7 @@ impl TokenProvider for EncryptedTokenService {
     async fn issue_token(
         &self,
         identity: ExternalIdentity,
-        audit_event: ChainedAuditEvent,
+        audit_event: TokenAuditEvent,
     ) -> Result<String, anyhow::Error> {
         let user_id = identity.user_id().to_string();
         let identity_provider = identity.identity_provider().to_string();
