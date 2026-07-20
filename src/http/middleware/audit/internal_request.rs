@@ -16,9 +16,8 @@ use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
-use anyhow;
-use upgrade_version::UpgradeVersion;
 use actix_web::HttpMessage;
+use anyhow;
 
 /// [`InternalRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
 /// processed by the `begin_audit_chain` middleware and has an audit context initialized.

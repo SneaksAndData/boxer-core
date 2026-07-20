@@ -1,6 +1,6 @@
 mod request_with_claims;
 
-use crate::http::middleware::audit::extract_audit_chain::request_with_claims::RequestWithTokenEvent;
+use crate::http::middleware::audit::extract_external_token_event::request_with_claims::RequestWithTokenEvent;
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::error::ErrorInternalServerError;
