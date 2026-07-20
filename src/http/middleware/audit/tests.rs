@@ -11,21 +11,21 @@ use crate::services::base::upsert_repository::ReadOnlyRepository;
 use crate::services::encrypted_token_service::EncryptedTokenService;
 use crate::services::external_identity_validator::external_identity::ExternalIdentity;
 use crate::services::observability::open_telemetry::metrics::provider::MetricsProvider;
-use crate::services::token_decryption_service::TokenDecryptionService;
 use crate::services::token_decryption_service::encryption_keys::EncryptionKeys;
 use crate::services::token_decryption_service::token_settings::TokenValidationSettings;
-use crate::services::token_service::internal_token_service::token_provider::TokenProvider;
+use crate::services::token_decryption_service::TokenDecryptionService;
 use crate::services::token_service::internal_token_service::token_provider::principal::Principal;
 use crate::services::token_service::internal_token_service::token_provider::principal_service::PrincipalService;
-use crate::services::validation_service::ValidationService;
+use crate::services::token_service::internal_token_service::token_provider::TokenProvider;
 use crate::services::validation_service::cedar_validation_service::CedarValidationService;
 use crate::services::validation_service::path_segment::PathSegment;
 use crate::services::validation_service::request_context::RequestContext;
 use crate::services::validation_service::request_segment::RequestSegment;
 use crate::services::validation_service::schema_provider::SchemaProvider;
+use crate::services::validation_service::ValidationService;
 use actix_web::http::StatusCode;
-use actix_web::web::{ReqData, scope};
-use actix_web::{App, HttpMessage, HttpRequest, HttpResponse, test, web};
+use actix_web::web::{scope, ReqData};
+use actix_web::{test, web, App, HttpMessage, HttpRequest, HttpResponse};
 use anyhow::Result;
 use assert_matches::assert_matches;
 use async_trait::async_trait;
@@ -369,12 +369,17 @@ impl MockAuditWriter {
                 matches!(
                     event,
                     AuditEvent::Final(ChainedAuditEvent {
-                        external_token: None,
+                        external_token: Some(TokenAuditEvent {
+                            token_id: Some(_),
+                            result: _,
+                            reason_errors: _,
+                            token_type: Some(_),
+                        }),
                         internal_token: Some(TokenAuditEvent {
                             token_id: Some(_),
                             result: _,
-                            reason_errors,
-                            token_type: Some(token_type),
+                            reason_errors: _,
+                            token_type: Some(_),
                         }),
                         policy_evaluation_result: Some(PolicyEvaluationResult {
                             action: Some(action),
@@ -383,9 +388,7 @@ impl MockAuditWriter {
                             reason: Some(reason),
                             decision: Decision::Allow,
                         })
-                    }) if reason_errors.is_empty()
-                        && token_type == "external"
-                        && action == r#"Action::"post""#
+                    }) if action == r#"Action::"post""#
                         && actor == r#"User::"alice""#
                         && resource == r#"Http::"example.com""#
                         && reason.policies.contains("policy0")

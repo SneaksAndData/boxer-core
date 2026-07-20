@@ -15,9 +15,9 @@ use crate::http::middleware::token_decryptor_middleware::request_with_token::Req
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
+use actix_web::HttpMessage;
 use anyhow;
 use upgrade_version::UpgradeVersion;
 
@@ -150,10 +150,9 @@ impl RequestWithToken for InternalRequest {
                 let claims_v1 = V1ToBoxerClaims::to_boxer_claims(&claims)?;
                 let event = self.audit_event();
                 match event {
-                    AuditEvent::Intermediate(ChainedAuditEvent {
-                        external_token: Some(e),
-                        ..
-                    }) => claims_v1.upgrade_version(e),
+                    AuditEvent::Intermediate(ChainedAuditEvent { internal_token: e, .. }) => {
+                        claims_v1.upgrade_version(e)
+                    }
                     _ => anyhow::bail!("Unexpected audit event type when upgrading claims: {:?}", event),
                 }
             }
@@ -166,7 +165,7 @@ impl RequestWithToken for InternalRequest {
                 AuditEvent::Intermediate(ChainedAuditEvent {
                     external_token: token, ..
                 }) => {
-                    *token = Some(boxer_claims.audit_event.clone());
+                    *token = boxer_claims.audit_event.clone();
                 }
                 _ => anyhow::bail!("Unexpected audit event type when setting claims: {:?}", audit_event),
             }

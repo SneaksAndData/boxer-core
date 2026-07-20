@@ -69,7 +69,7 @@ impl RequiredClaims for BoxerClaims {
 impl UpgradeVersion for BoxerClaims {
     type Result = V2BoxerClaims;
 
-    type Context = TokenAuditEvent;
+    type Context = Option<TokenAuditEvent>;
 
     fn upgrade_version(self, audit_event: Self::Context) -> V2BoxerClaims {
         V2BoxerClaims {
