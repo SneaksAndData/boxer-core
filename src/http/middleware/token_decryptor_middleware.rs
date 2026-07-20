@@ -2,7 +2,6 @@ pub mod decryptor;
 pub mod request_with_token;
 pub mod token_decryptor_middleware_factory;
 
-use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, forward_ready};
@@ -40,10 +39,7 @@ where
         let future = async move {
             let req = R::try_from_request(req).map_err(ErrorBadRequest)?;
             let encrypted_token = req.token();
-            let claims = decryptor
-                .decrypt(encrypted_token)
-                .map_err(ErrorBadRequest)
-                .map_err(|e| AuditedError::new(req.audit_event(), e))?;
+            let claims = decryptor.decrypt(encrypted_token).map_err(ErrorBadRequest)?;
 
             next.call(req.set_claims(claims).map_err(ErrorBadRequest)?).await
         };

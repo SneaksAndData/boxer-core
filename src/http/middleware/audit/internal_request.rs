@@ -18,7 +18,7 @@ use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
-use anyhow::bail;
+use anyhow;
 use upgrade_version::UpgradeVersion;
 
 /// [`InternalRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
@@ -150,7 +150,9 @@ impl RequestWithToken for InternalRequest {
                 let claims_v1 = V1ToBoxerClaims::to_boxer_claims(&claims)?;
                 let event = self.audit_event();
                 match event {
-                    AuditEvent::Intermediate(e) => claims_v1.upgrade_version(e),
+                    AuditEvent::Intermediate(ChainedAuditEvent { internal_token: e, .. }) => {
+                        claims_v1.upgrade_version(e)
+                    }
                     _ => anyhow::bail!("Unexpected audit event type when upgrading claims: {:?}", event),
                 }
             }
@@ -163,11 +165,10 @@ impl RequestWithToken for InternalRequest {
                 AuditEvent::Intermediate(ChainedAuditEvent {
                     external_token: token, ..
                 }) => {
-                    *token = boxer_claims.audit_event.external_token.clone();
+                    *token = boxer_claims.audit_event.clone();
                 }
                 _ => anyhow::bail!("Unexpected audit event type when setting claims: {:?}", audit_event),
             }
-            *audit_event = AuditEvent::Intermediate(boxer_claims.audit_event.clone());
             Ok(())
         })?;
 
@@ -177,7 +178,7 @@ impl RequestWithToken for InternalRequest {
 
     fn try_from_request(request: ServiceRequest) -> Result<Self, anyhow::Error> {
         if !request.extensions().contains::<EncryptedToken>() {
-            bail!("Missing required encrypted token extension");
+            anyhow::bail!("Missing required encrypted token extension");
         };
 
         if !request.extensions().contains::<AuditEvent>() {
@@ -186,6 +187,14 @@ impl RequestWithToken for InternalRequest {
 
         let internal_request = InternalRequest(request);
         Ok(internal_request)
+    }
+
+    fn external_token_data(&self) -> Result<TokenAuditEvent, anyhow::Error> {
+        self.0
+            .extensions_mut()
+            .get::<AuditEvent>()
+            .and_then(|audit_event| audit_event.external_token_data())
+            .ok_or_else(|| anyhow::anyhow!("Missing required external token data in request extensions"))
     }
 }
 

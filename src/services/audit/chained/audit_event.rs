@@ -57,4 +57,11 @@ impl AuditEvent {
             _ => panic!("Cannot finalize an AuditEvent that is already Final"),
         }
     }
+
+    pub fn external_token_data(&self) -> Option<TokenAuditEvent> {
+        match self {
+            AuditEvent::Final(e) => e.external_token.clone(),
+            AuditEvent::Intermediate(e) => e.external_token.clone(),
+        }
+    }
 }

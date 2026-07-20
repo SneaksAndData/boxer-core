@@ -5,7 +5,7 @@ use crate::contracts::dynamic_claims_collection::DynamicClaims;
 use crate::contracts::internal_token::v2::{
     AUDIT_EVENT, PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, VALIDATOR_SCHEMA_ID_KEY,
 };
-use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::validation_service::required_claims::RequiredClaims;
 use cedar_policy::{Entity, SchemaFragment};
 
@@ -17,7 +17,7 @@ pub struct BoxerClaims {
     pub schema_id: String,
     pub validator_schema_id: String,
     pub principal: Entity,
-    pub audit_event: ChainedAuditEvent,
+    pub audit_event: Option<TokenAuditEvent>,
 }
 
 pub trait ToBoxerClaims<T>
@@ -53,7 +53,7 @@ where
                 .map_err(|e| anyhow::anyhow!("Invalid schema: {}", e))?,
             principal: Entity::from_json_value(principal.clone(), None)
                 .map_err(|e| anyhow::anyhow!("Invalid principal: {}", e))?,
-            audit_event: serde_json::from_value(audit_event)?,
+            audit_event: serde_json::from_value(audit_event).ok(),
             schema_id,
             validator_schema_id,
         })

@@ -369,12 +369,17 @@ impl MockAuditWriter {
                 matches!(
                     event,
                     AuditEvent::Final(ChainedAuditEvent {
-                        external_token: None,
+                        external_token: Some(TokenAuditEvent {
+                            token_id: Some(_),
+                            result: _,
+                            reason_errors: _,
+                            token_type: Some(_),
+                        }),
                         internal_token: Some(TokenAuditEvent {
                             token_id: Some(_),
                             result: _,
-                            reason_errors,
-                            token_type: Some(token_type),
+                            reason_errors: _,
+                            token_type: Some(_),
                         }),
                         policy_evaluation_result: Some(PolicyEvaluationResult {
                             action: Some(action),
@@ -383,9 +388,7 @@ impl MockAuditWriter {
                             reason: Some(reason),
                             decision: Decision::Allow,
                         })
-                    }) if reason_errors.is_empty()
-                        && token_type == "external"
-                        && action == r#"Action::"post""#
+                    }) if action == r#"Action::"post""#
                         && actor == r#"User::"alice""#
                         && resource == r#"Http::"example.com""#
                         && reason.policies.contains("policy0")

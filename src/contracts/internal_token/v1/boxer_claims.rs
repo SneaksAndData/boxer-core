@@ -5,7 +5,7 @@ use crate::contracts::dynamic_claims_collection::DynamicClaims;
 use crate::contracts::internal_token::v1::{PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, VALIDATOR_SCHEMA_ID_KEY};
 use crate::contracts::internal_token::v2::boxer_claims::BoxerClaims as V2BoxerClaims;
 use crate::http::middleware::audit::internal_request::upgrade_version::UpgradeVersion;
-use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::validation_service::required_claims::RequiredClaims;
 use cedar_policy::{Entity, SchemaFragment};
 
@@ -69,7 +69,7 @@ impl RequiredClaims for BoxerClaims {
 impl UpgradeVersion for BoxerClaims {
     type Result = V2BoxerClaims;
 
-    type Context = ChainedAuditEvent;
+    type Context = Option<TokenAuditEvent>;
 
     fn upgrade_version(self, audit_event: Self::Context) -> V2BoxerClaims {
         V2BoxerClaims {
