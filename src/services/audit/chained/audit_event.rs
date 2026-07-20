@@ -45,6 +45,19 @@ impl AuditEvent {
         })
     }
 
+    pub fn set_external_token(&mut self, external_token: TokenAuditEvent) {
+        match self {
+            AuditEvent::Intermediate(e) => {
+                *self = AuditEvent::Final(ChainedAuditEvent {
+                    external_token: Some(external_token),
+                    internal_token: e.internal_token.clone(),
+                    policy_evaluation_result: e.policy_evaluation_result.clone(),
+                })
+            }
+            _ => panic!("Cannot finalize an AuditEvent that is already Final"),
+        }
+    }
+
     pub fn finalize(&mut self, result: PolicyEvaluationResult) {
         match self {
             AuditEvent::Intermediate(e) => {
