@@ -14,6 +14,8 @@ pub enum AuditEvent {
     Intermediate(ChainedAuditEvent),
 }
 
+pub struct IntermediateAuditEvent;
+
 impl AuditEvent {
     pub fn token_not_present() -> AuditEvent {
         AuditEvent::Final(ChainedAuditEvent {
