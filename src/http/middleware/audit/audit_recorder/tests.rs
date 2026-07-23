@@ -3,7 +3,7 @@ use crate::http::middleware::audit::audit_recorder::audit_recorder_factory::Audi
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
 use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::services::audit::chained::audit_event::AuditEvent;
-use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
 use actix_web::body::BoxBody;
 use actix_web::dev::ServiceResponse;
 use actix_web::error::ErrorInternalServerError;
@@ -113,7 +113,7 @@ async fn test_custom_error_recording() {
     let chain = App::new()
         .wrap_fn(|req, _src| {
             req.extensions_mut()
-                .insert(AuditEvent::Intermediate(ChainedAuditEvent::empty()));
+                .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
             let error = AuditedError::from_request(&req, ErrorInternalServerError("Some error"));
             std::future::ready(Err::<ServiceResponse<BoxBody>, _>(Error::from(error)))
         })
@@ -143,8 +143,10 @@ async fn test_custom_error_recording() {
 mock! {
     pub AuditEventSource {}
 
-    impl AuditEventSource for AuditEventSource {
-        fn audit_event(&self) -> AuditEvent;
+    impl AuditEventSource<AuditEvent> for AuditEventSource {
+        type Error = actix_web::Error;
+
+        fn audit_event(&self) -> Result<AuditEvent, actix_web::Error>;
     }
 }
 
@@ -163,7 +165,7 @@ impl<B> TryFrom<ServiceResponse<B>> for MockAuditEventSource {
     fn try_from(_value: ServiceResponse<B>) -> Result<Self, Self::Error> {
         let mut mock = MockAuditEventSource::new();
         mock.expect_audit_event()
-            .returning(|| AuditEvent::Intermediate(ChainedAuditEvent::empty()));
+            .returning(|| Ok(AuditEvent::Intermediate(IntermediateAuditEvent::empty())));
         Ok(mock)
     }
 }

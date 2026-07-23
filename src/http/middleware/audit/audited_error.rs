@@ -3,6 +3,7 @@ mod tests;
 
 use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
 use crate::services::audit::chained::audit_event::AuditEvent;
+use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::InternalError;
 use actix_web::http::StatusCode;
@@ -100,7 +101,7 @@ impl ExternalTokenError for AuditedError {
                 panic!("Final audit event in a request should not be wrapped for token not present error")
             }
             AuditEvent::Intermediate(data) if data.is_empty() => AuditedError {
-                event: AuditEvent::token_not_present(),
+                event: AuditEvent::Final(FinalAuditEvent::token_not_present()),
                 cause: Box::new(InternalError::new(
                     anyhow!("Token not present"),
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -140,7 +141,7 @@ impl ExternalTokenError for AuditedError {
                 panic!("Final audit event in a request should not be wrapped for token extracted error")
             }
             AuditEvent::Intermediate(data) if data.is_empty() => AuditedError {
-                event: AuditEvent::token_extraction_failed(cause.to_string()),
+                event: AuditEvent::Final(FinalAuditEvent::token_extraction_failed(cause.to_string())),
                 cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
             },
             AuditEvent::Intermediate(data) => {

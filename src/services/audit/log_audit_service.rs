@@ -120,32 +120,24 @@ impl AuditWriter for LogAuditService {
     // COVERAGE: disabled since this should be tested in integration tests only
     #[cfg_attr(coverage, coverage(off))]
     fn write(&self, event: AuditEvent) {
-        let (payload, is_final) = match event {
-            AuditEvent::Final(e) => (e, true),
-            AuditEvent::Intermediate(e) => (e, false),
-        };
-
-        let decision = payload.decision();
-        let reason = payload.reason();
-        let external_token_id = payload.external_token.as_ref().and_then(|t| t.token_id.clone());
-        let internal_token_id = payload.internal_token.as_ref().and_then(|t| t.token_id.clone());
+        let payload = event.get_properties();
         log::info!(
             // Indicates the audit events for easier filtering in log aggregation systems
             log_type = "audit",
 
             // The event decomposition for structured logging
-            is_final = is_final,
-            action = payload.action(),
-            actor = payload.actor(),
-            resource = payload.resource(),
-            decision:serde = decision,
-            reason_policies:serde = reason.policies,
-            reason_errors:serde = reason.errors,
-            external_token_id = external_token_id,
-            internal_token_id = internal_token_id;
+            is_final = payload.is_final,
+            action = payload.action,
+            actor = payload.actor,
+            resource = payload.resource,
+            decision:serde = payload.decision,
+            reason_policies:serde = payload.reason.policies,
+            reason_errors:serde = payload.reason.errors,
+            external_token_id = payload.external_token_id,
+            internal_token_id = payload.internal_token_id;
 
             // The log message
-            "Boxer audit event recorded with decision: {:?}", decision
+            "Boxer audit event recorded with decision: {:?}", payload.decision
         );
     }
 }

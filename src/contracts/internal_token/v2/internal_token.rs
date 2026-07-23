@@ -8,7 +8,7 @@ use crate::contracts::internal_token::v2::{
     AUDIT_EVENT, BOXER_AUDIENCE, BOXER_ISSUER, IDENTITY_PROVIDER_KEY, PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY,
     USER_ID_KEY, VALIDATOR_SCHEMA_ID_KEY,
 };
-use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use cedar_policy::{Entity, SchemaFragment};
 use josekit::jwt::JwtPayload;
 use std::time::{Duration, SystemTime};
@@ -25,7 +25,7 @@ pub struct InternalToken {
     pub version: String,
     pub validity_period: Duration,
     pub validator_schema_id: String,
-    pub audit_event: ChainedAuditEvent,
+    pub audit_event: TokenAuditEvent,
 }
 impl InternalToken {
     pub fn new(
@@ -36,7 +36,7 @@ impl InternalToken {
         schema_id: String,
         validity_period: Duration,
         validator_schema_id: String,
-        audit_event: ChainedAuditEvent,
+        audit_event: TokenAuditEvent,
     ) -> Self {
         InternalToken {
             principal,
