@@ -1,6 +1,7 @@
 pub mod external_token_error;
 pub mod token_with_id;
 
+use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
 use crate::http::middleware::request_with_token_id::RequestWithTokenId;
 use crate::models::external_token::ExternalToken;
@@ -18,7 +19,9 @@ pub async fn extract_external_token<Request, Error>(
 ) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error>
 where
     Error: ExternalTokenError + 'static,
-    Request: RequestWithTokenId<Token = ExternalToken>,
+    Request: RequestWithTokenId<Token = ExternalToken>
+        + TryFrom<ServiceRequest, Error = AuditedError>
+        + Into<ServiceRequest>,
 {
     super::extract_token_from_header::<ExternalToken, Request, Error>(request, next).await
 }

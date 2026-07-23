@@ -1,5 +1,6 @@
 use super::request_with_token_id::RequestWithTokenId;
 use crate::contracts::internal_token::encrypted_token::EncryptedToken;
+use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
@@ -16,7 +17,9 @@ pub async fn extract_encrypted_token<Request, Error>(
 ) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error>
 where
     Error: ExternalTokenError + 'static,
-    Request: RequestWithTokenId<Token = EncryptedToken>,
+    Request: RequestWithTokenId<Token = EncryptedToken>
+        + TryFrom<ServiceRequest, Error = AuditedError>
+        + Into<ServiceRequest>,
 {
     super::extract_token_from_header::<EncryptedToken, Request, Error>(request, next).await
 }

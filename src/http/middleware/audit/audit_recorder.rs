@@ -7,6 +7,7 @@ mod tests;
 use super::audited_error::AuditedError;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, forward_ready};
 use futures_util::future::LocalBoxFuture;
 use std::sync::Arc;
@@ -20,7 +21,7 @@ pub struct AuditRecorder<NextService, Req> {
 }
 
 /// The constructor for the middleware
-impl<NextService, Req: AuditEventSource> AuditRecorder<NextService, Req> {
+impl<NextService, Req> AuditRecorder<NextService, Req> {
     pub fn new(next: Arc<NextService>, audit_service: Arc<dyn AuditWriter>) -> Self {
         AuditRecorder {
             next,
@@ -38,12 +39,13 @@ where
     Next::Future: 'static,
     BodyType: 'static,
     AES: TryFrom<ServiceResponse<BodyType>, Error = actix_web::Error>
-        + AuditEventSource
+        + AuditEventSource<AuditEvent, Error = actix_web::Error>
         + Into<ServiceResponse<BodyType>>,
 {
     type Response = ServiceResponse<BodyType>;
     type Error = actix_web::Error;
     type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
+
     forward_ready!(next);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
@@ -56,7 +58,7 @@ where
             match result {
                 Ok(response) => {
                     let audited: AES = AES::try_from(response)?;
-                    let event = audited.audit_event();
+                    let event = audited.audit_event()?;
                     audit_writer.write(event);
                     Ok(audited.into())
                 }

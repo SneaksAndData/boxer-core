@@ -1,6 +1,5 @@
 use crate::contracts::dynamic_claims_collection::DynamicClaimsCollection;
 use crate::contracts::internal_token::encrypted_token::EncryptedToken;
-use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use actix_web::dev::ServiceRequest;
 
 /// Abstraction over request types that carry an encrypted internal token.
@@ -15,7 +14,4 @@ pub trait RequestWithToken {
     fn try_from_request(request: ServiceRequest) -> Result<Self, anyhow::Error>
     where
         Self: Sized;
-
-    /// Returns the external token data associated with the request, which is used for auditing purposes.
-    fn external_token_data(&self) -> Result<TokenAuditEvent, anyhow::Error>;
 }

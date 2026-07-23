@@ -8,7 +8,7 @@ use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::http::middleware::request_with_token_id::RequestWithTokenId;
 use crate::models::external_token::ExternalToken;
 use crate::services::audit::chained::audit_event::AuditEvent;
-use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
+use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
@@ -20,6 +20,25 @@ use actix_web::error::ErrorInternalServerError;
 /// multiple initializations of the audit context for the same request.
 #[derive(Debug)]
 pub struct ExternalRequest(ServiceRequest);
+
+impl ExternalRequest {
+    fn update_audit_event<F>(&mut self, callback: F) -> anyhow::Result<(), anyhow::Error>
+    where
+        F: for<'e> FnOnce(&'e mut IntermediateAuditEvent) -> Result<(), anyhow::Error>,
+    {
+        let mut extensions = self.0.extensions_mut();
+        let audit_event = extensions
+            .get_mut::<AuditEvent>()
+            .ok_or_else(|| anyhow::anyhow!("ExternalRequest: Audit event not found in request extensions"))?;
+
+        match audit_event {
+            AuditEvent::Final(_) => Err(anyhow::anyhow!(
+                "ExternalRequest: Audit event already final, cannot modify it"
+            )),
+            AuditEvent::Intermediate(iae) => callback(iae),
+        }
+    }
+}
 
 /// Implementing `Into<ServiceRequest>` allows us to easily convert an `AuditedRequest` back into
 /// a `ServiceRequest` when passing it to the next middleware or handler in the chain.
@@ -42,25 +61,21 @@ impl TryCreateAuditContext for ExternalRequest {
         }
         request
             .extensions_mut()
-            .insert(AuditEvent::Intermediate(ChainedAuditEvent::empty()));
+            .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
         Ok(ExternalRequest(request))
     }
 }
 
-impl AuditEventSource for ExternalRequest {
-    /// Returns the current [`AuditEvent`] stored in the request extensions.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the request does not contain an `AuditEvent` extension.
-    /// This should never happen for a properly constructed [`ExternalRequest`],
-    /// since `try_create_audit_context` always inserts an event on creation.
-    fn audit_event(&self) -> AuditEvent {
+impl AuditEventSource<IntermediateAuditEvent> for ExternalRequest {
+    type Error = anyhow::Error;
+
+    /// Returns the current [`IntermediateAuditEvent`] stored in the request extensions.
+    fn audit_event(&self) -> Result<IntermediateAuditEvent, Self::Error> {
         self.0
             .extensions()
-            .get::<AuditEvent>()
+            .get::<IntermediateAuditEvent>()
             .cloned()
-            .expect("Audited event not exists in request extensions")
+            .ok_or_else(|| anyhow::anyhow!("Audited event not exists in request extensions"))
     }
 }
 
@@ -73,18 +88,21 @@ impl TryFrom<ServiceRequest> for ExternalRequest {
     /// This is the counterpart to [`Into<ServiceRequest>`] and is used by the external token
     /// middleware to re-wrap the request after extracting the token, preserving the existing
     /// audit context.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the request does not contain an [`AuditEvent`] extension.
 
     fn try_from(value: ServiceRequest) -> Result<Self, Self::Error> {
-        value
-            .extensions()
-            .get::<AuditEvent>()
-            .cloned()
-            .expect("Audited event not exists in request extensions");
-        Ok(ExternalRequest(value))
+        let event = value.extensions().get::<AuditEvent>().cloned().ok_or_else(|| {
+            AuditedError::from_request(
+                &value,
+                ErrorInternalServerError("IntermediateAuditEvent event not exists in request extensions"),
+            )
+        })?;
+        match event {
+            AuditEvent::Final(_) => Err(AuditedError::from_request(
+                &value,
+                ErrorInternalServerError("IntermediateAuditEvent event is already final"),
+            )),
+            AuditEvent::Intermediate(_) => Ok(ExternalRequest(value)),
+        }
     }
 }
 
@@ -96,42 +114,17 @@ impl RequestWithTokenId for ExternalRequest {
     ///
     /// The token id is derived from the provided [`ExternalToken`] and written into the
     /// intermediate [`ChainedAuditEvent`] held in request extensions.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the request extensions already contain an external token audit event,
-    /// indicating a duplicate token id assignment.
-    ///
-    /// Panics if the audit event in extensions is not an `AuditEvent::Intermediate`,
-    /// which would mean the audit chain is in an unexpected state.
-    fn add_token(self, token: Self::Token) -> ServiceRequest {
+    fn add_token(&mut self, token: Self::Token) -> anyhow::Result<()> {
         let token_id = token.id();
 
         {
+            self.update_audit_event(|e: &mut IntermediateAuditEvent| {
+                e.external_token = Some(TokenAuditEvent::external().with_token_id(&token_id));
+                Ok(())
+            })?;
             let mut binding = self.0.extensions_mut();
-            let audit_event = binding.get_mut::<AuditEvent>();
-
-            // Mutate the audit event if the audit event complains the expected structure
-            if let Some(AuditEvent::Intermediate(chained_audit_event)) = audit_event {
-                if chained_audit_event.external_token.is_some() {
-                    panic!(
-                        "External token audit event already exists in request extensions: {:?}",
-                        chained_audit_event.external_token
-                    );
-                }
-                chained_audit_event.external_token = Some(TokenAuditEvent::external().with_token_id(&token_id))
-            } else {
-                // Otherwise, stop processing immediately
-                panic!(
-                    "Expected Intermediate Audit event to exist in request extension, but got {:?}",
-                    audit_event
-                );
-            }
-
             binding.insert(token.clone());
         }
-
-        // Return the updated value
-        self.0
+        Ok(())
     }
 }
