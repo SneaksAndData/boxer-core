@@ -12,12 +12,12 @@ use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::http::middleware::request_with_token_id::RequestWithTokenId;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
-use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
+use actix_web::HttpMessage;
 use anyhow;
 use anyhow::Result;
 use upgrade_version::UpgradeVersion;
@@ -77,13 +77,8 @@ impl TryCreateAuditContext for InternalRequest {
 impl AuditEventSource<IntermediateAuditEvent> for InternalRequest {
     type Error = anyhow::Error;
 
-    /// Returns the current [`AuditEvent`] stored in the request extensions.
+    /// Returns the current [`IntermediateAuditEvent`] stored in the request extensions.
     ///
-    /// # Panics
-    ///
-    /// Panics if the request does not contain an `AuditEvent` extension.
-    /// This should never happen for a properly constructed [`InternalRequest`],
-    /// since `try_create_audit_context` always inserts an event on creation.
     fn audit_event(&self) -> Result<IntermediateAuditEvent> {
         let ae = self
             .0
@@ -105,16 +100,8 @@ impl RequestWithTokenId for InternalRequest {
     /// Stores the external token identifier in the request's audit context and returns
     /// the underlying [`ServiceRequest`].
     ///
-    /// The token id is derived from the provided [`ExternalToken`] and written into the
-    /// intermediate [`ChainedAuditEvent`] held in request extensions.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the request extensions already contain an external token audit event,
-    /// indicating a duplicate token id assignment.
-    ///
-    /// Panics if the audit event in extensions is not an `AuditEvent::Intermediate`,
-    /// which would mean the audit chain is in an unexpected state.
+    /// The token id is derived from the provided [`EncryptedToken`] and written into the [`IntermediateAuditEvent`]
+    /// held in request extensions.
     fn add_token(&mut self, token: Self::Token) -> Result<()> {
         let token_id = token.id();
 

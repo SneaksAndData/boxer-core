@@ -7,12 +7,12 @@ use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::http::middleware::request_with_token_id::RequestWithTokenId;
 use crate::models::external_token::ExternalToken;
-use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
+use actix_web::HttpMessage;
 
 /// [`ExternalRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
 /// processed by the `begin_audit_chain` middleware and has an audit context initialized.
@@ -68,13 +68,8 @@ impl TryCreateAuditContext for ExternalRequest {
 
 impl AuditEventSource<IntermediateAuditEvent> for ExternalRequest {
     type Error = anyhow::Error;
-    /// Returns the current [`AuditEvent`] stored in the request extensions.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the request does not contain an `AuditEvent` extension.
-    /// This should never happen for a properly constructed [`ExternalRequest`],
-    /// since `try_create_audit_context` always inserts an event on creation.
+
+    /// Returns the current [`IntermediateAuditEvent`] stored in the request extensions.
     fn audit_event(&self) -> Result<IntermediateAuditEvent, Self::Error> {
         self.0
             .extensions()
@@ -93,23 +88,21 @@ impl TryFrom<ServiceRequest> for ExternalRequest {
     /// This is the counterpart to [`Into<ServiceRequest>`] and is used by the external token
     /// middleware to re-wrap the request after extracting the token, preserving the existing
     /// audit context.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the request does not contain an [`AuditEvent`] extension.
 
     fn try_from(value: ServiceRequest) -> Result<Self, Self::Error> {
-        value
-            .extensions()
-            .get::<IntermediateAuditEvent>()
-            .cloned()
-            .ok_or_else(|| {
-                AuditedError::from_request(
-                    &value,
-                    ErrorInternalServerError("Audited event not exists in request extensions"),
-                )
-            })?;
-        Ok(ExternalRequest(value))
+        let event = value.extensions().get::<AuditEvent>().cloned().ok_or_else(|| {
+            AuditedError::from_request(
+                &value,
+                ErrorInternalServerError("IntermediateAuditEvent event not exists in request extensions"),
+            )
+        })?;
+        match event {
+            AuditEvent::Final(_) => Err(AuditedError::from_request(
+                &value,
+                ErrorInternalServerError("IntermediateAuditEvent event is already final"),
+            )),
+            AuditEvent::Intermediate(_) => Ok(ExternalRequest(value)),
+        }
     }
 }
 
@@ -121,14 +114,6 @@ impl RequestWithTokenId for ExternalRequest {
     ///
     /// The token id is derived from the provided [`ExternalToken`] and written into the
     /// intermediate [`ChainedAuditEvent`] held in request extensions.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the request extensions already contain an external token audit event,
-    /// indicating a duplicate token id assignment.
-    ///
-    /// Panics if the audit event in extensions is not an `AuditEvent::Intermediate`,
-    /// which would mean the audit chain is in an unexpected state.
     fn add_token(&mut self, token: Self::Token) -> anyhow::Result<()> {
         let token_id = token.id();
 
