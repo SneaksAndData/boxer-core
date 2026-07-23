@@ -7,12 +7,12 @@ use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::http::middleware::request_with_token_id::RequestWithTokenId;
 use crate::models::external_token::ExternalToken;
-use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
+use actix_web::HttpMessage;
 
 /// [`ExternalRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
 /// processed by the `begin_audit_chain` middleware and has an audit context initialized.
@@ -54,7 +54,7 @@ impl Into<ServiceRequest> for ExternalRequest {
 /// has already been initialized.
 impl TryCreateAuditContext for ExternalRequest {
     fn try_create_audit_context(request: ServiceRequest) -> Result<Self, actix_web::Error> {
-        if request.extensions().get::<IntermediateAuditEvent>().is_some() {
+        if request.extensions().get::<AuditEvent>().is_some() {
             return Err(ErrorInternalServerError(
                 "Failed to create audited request: audit chain already exists in request extensions",
             ));
