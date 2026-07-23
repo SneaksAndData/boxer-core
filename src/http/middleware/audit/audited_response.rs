@@ -1,9 +1,9 @@
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
-use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::audit_event::AuditEvent;
+use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
+use actix_web::HttpMessage;
 use actix_web::body::BoxBody;
 use actix_web::dev::ServiceResponse;
-use actix_web::HttpMessage;
 
 /// [`AuditedResponse`] contains an abstraction layer for `ServiceResponse` that abstracts the handling
 /// of the audit metadata and the audit metadata validation.

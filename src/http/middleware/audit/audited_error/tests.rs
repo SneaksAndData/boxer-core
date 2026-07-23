@@ -1,8 +1,8 @@
 use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
-use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use actix_web::error::{ErrorInternalServerError, InternalError};
 use actix_web::http::StatusCode;

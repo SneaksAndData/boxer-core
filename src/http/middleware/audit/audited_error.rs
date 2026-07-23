@@ -2,8 +2,8 @@
 mod tests;
 
 use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
-use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::audit_event::AuditEvent;
+use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::InternalError;
 use actix_web::http::StatusCode;
