@@ -2,6 +2,7 @@
 mod tests;
 pub mod try_create_audit_context;
 
+use actix_web::Error;
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::middleware::Next;
@@ -15,7 +16,7 @@ use try_create_audit_context::TryCreateAuditContext;
 pub async fn begin_audit_chain<AuditContext: TryCreateAuditContext + 'static>(
     req: ServiceRequest,
     next: Next<impl MessageBody>,
-) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
+) -> Result<ServiceResponse<impl MessageBody>, Error> {
     let audited_request = AuditContext::try_create_audit_context(req)?;
     next.call(audited_request.into()).await
 }

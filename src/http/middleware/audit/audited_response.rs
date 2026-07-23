@@ -1,6 +1,5 @@
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
 use crate::services::audit::chained::audit_event::AuditEvent;
-use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use actix_web::HttpMessage;
 use actix_web::body::BoxBody;
 use actix_web::dev::ServiceResponse;
@@ -29,11 +28,11 @@ impl<BodyType> TryFrom<ServiceResponse<BodyType>> for AuditedResponse<BodyType> 
     /// contains an [`FinalAuditEvent`] in its extensions. If the [`FinalAuditEvent`] is not found,
     /// an error is returned indicating that the response cannot be audited.
     fn try_from(value: ServiceResponse<BodyType>) -> Result<Self, Self::Error> {
-        let contains = { value.request().extensions().contains::<FinalAuditEvent>() };
+        let contains = { value.request().extensions().contains::<AuditEvent>() };
 
         match contains {
             false => Err(actix_web::error::ErrorInternalServerError(
-                "Audit event not found in request extensions",
+                "AuditedResponse: Audit event not found in ServiceRequest request extensions",
             )),
             true => Ok(Self(value)),
         }

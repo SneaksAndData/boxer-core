@@ -30,17 +30,21 @@ use upgrade_version::UpgradeVersion;
 pub struct InternalRequest(ServiceRequest);
 
 impl InternalRequest {
-    fn update_audit_event<F, T>(&mut self, callback: F) -> Result<(), anyhow::Error>
+    fn update_audit_event<F>(&mut self, callback: F) -> Result<(), anyhow::Error>
     where
-        F: for<'e> FnOnce(&'e mut T) -> Result<(), anyhow::Error>,
-        T: 'static,
+        F: for<'e> FnOnce(&'e mut IntermediateAuditEvent) -> Result<(), anyhow::Error>,
     {
         let mut extensions = self.0.extensions_mut();
         let audit_event = extensions
-            .get_mut::<T>()
-            .ok_or_else(|| anyhow::anyhow!("Audit event not found in request extensions"))?;
+            .get_mut::<AuditEvent>()
+            .ok_or_else(|| anyhow::anyhow!("InternalRequest: Audit event not found in request extensions"))?;
 
-        callback(audit_event)
+        match audit_event {
+            AuditEvent::Final(_) => Err(anyhow::anyhow!(
+                "InternalRequest: Audit event already final, cannot modify it"
+            )),
+            AuditEvent::Intermediate(iae) => callback(iae),
+        }
     }
 }
 
@@ -58,12 +62,14 @@ impl Into<ServiceRequest> for InternalRequest {
 /// has already been initialized.
 impl TryCreateAuditContext for InternalRequest {
     fn try_create_audit_context(request: ServiceRequest) -> Result<Self, actix_web::Error> {
-        if request.extensions().get::<IntermediateAuditEvent>().is_some() {
+        if request.extensions().get::<AuditEvent>().is_some() {
             return Err(ErrorInternalServerError(
                 "Failed to create audited request: audit chain already exists in request extensions",
             ));
         }
-        request.extensions_mut().insert(IntermediateAuditEvent::empty());
+        request
+            .extensions_mut()
+            .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
         Ok(InternalRequest(request))
     }
 }
@@ -79,11 +85,17 @@ impl AuditEventSource<IntermediateAuditEvent> for InternalRequest {
     /// This should never happen for a properly constructed [`InternalRequest`],
     /// since `try_create_audit_context` always inserts an event on creation.
     fn audit_event(&self) -> Result<IntermediateAuditEvent> {
-        self.0
+        let ae = self
+            .0
             .extensions()
-            .get::<IntermediateAuditEvent>()
+            .get::<AuditEvent>()
             .cloned()
-            .ok_or_else(|| anyhow::anyhow!("Audit event not found in request extensions"))
+            .ok_or_else(|| anyhow::anyhow!("AuditEvent not found in InternalRequest extensions"))?;
+
+        match ae {
+            AuditEvent::Final(_) => Err(anyhow::anyhow!("Unexpected Final audit event in request extensiosns")),
+            AuditEvent::Intermediate(iae) => Ok(iae),
+        }
     }
 }
 
@@ -155,8 +167,8 @@ impl RequestWithToken for InternalRequest {
             anyhow::bail!("Missing required encrypted token extension");
         };
 
-        if !request.extensions().contains::<IntermediateAuditEvent>() {
-            panic!("Request does not contain IntermediateAuditEvent in request extensions");
+        if !request.extensions().contains::<AuditEvent>() {
+            panic!("Request does not contain AuditEvent in request extensions");
         }
 
         let internal_request = InternalRequest(request);
@@ -170,7 +182,9 @@ impl TryFrom<ServiceRequest> for InternalRequest {
         if let Some(event) = value.extensions().get::<AuditEvent>() {
             return Err(AuditedError::audit_chain_already_exists(event.clone()));
         }
-        value.extensions_mut().insert(IntermediateAuditEvent::empty());
+        value
+            .extensions_mut()
+            .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
         Ok(InternalRequest(value))
     }
 }

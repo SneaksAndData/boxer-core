@@ -7,6 +7,7 @@ use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::http::middleware::request_with_token_id::RequestWithTokenId;
 use crate::models::external_token::ExternalToken;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use actix_web::HttpMessage;
@@ -21,17 +22,21 @@ use actix_web::error::ErrorInternalServerError;
 pub struct ExternalRequest(ServiceRequest);
 
 impl ExternalRequest {
-    fn update_audit_event<F, T>(&mut self, callback: F) -> anyhow::Result<(), anyhow::Error>
+    fn update_audit_event<F>(&mut self, callback: F) -> anyhow::Result<(), anyhow::Error>
     where
-        F: for<'e> FnOnce(&'e mut T) -> Result<(), anyhow::Error>,
-        T: 'static,
+        F: for<'e> FnOnce(&'e mut IntermediateAuditEvent) -> Result<(), anyhow::Error>,
     {
         let mut extensions = self.0.extensions_mut();
         let audit_event = extensions
-            .get_mut::<T>()
-            .ok_or_else(|| anyhow::anyhow!("Audit event not found in request extensions"))?;
+            .get_mut::<AuditEvent>()
+            .ok_or_else(|| anyhow::anyhow!("ExternalRequest: Audit event not found in request extensions"))?;
 
-        callback(audit_event)
+        match audit_event {
+            AuditEvent::Final(_) => Err(anyhow::anyhow!(
+                "ExternalRequest: Audit event already final, cannot modify it"
+            )),
+            AuditEvent::Intermediate(iae) => callback(iae),
+        }
     }
 }
 
@@ -54,7 +59,9 @@ impl TryCreateAuditContext for ExternalRequest {
                 "Failed to create audited request: audit chain already exists in request extensions",
             ));
         }
-        request.extensions_mut().insert(IntermediateAuditEvent::empty());
+        request
+            .extensions_mut()
+            .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
         Ok(ExternalRequest(request))
     }
 }
