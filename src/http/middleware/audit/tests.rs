@@ -218,7 +218,7 @@ async fn test_token_v2() {
     let token = token_service
         .issue_token(
             ExternalIdentity::for_test("user-id", "identity-provider"),
-            ChainedAuditEvent::external("token-id").external_token.unwrap(),
+            TokenAuditEvent::external().with_token_id("token-id"),
         )
         .await
         .unwrap();
