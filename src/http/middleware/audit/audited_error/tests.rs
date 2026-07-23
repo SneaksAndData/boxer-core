@@ -1,7 +1,8 @@
 use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
+use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
+use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
 use crate::services::audit::chained::audit_event::AuditEvent;
-use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use actix_web::error::{ErrorInternalServerError, InternalError};
 use actix_web::http::StatusCode;
@@ -29,7 +30,7 @@ fn test_audited_error_wrap_success() {
     let mut response = HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR).finish();
     response
         .extensions_mut()
-        .insert(AuditEvent::Intermediate(ChainedAuditEvent::empty()));
+        .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
 
     // Act
     let result = AuditedError::wrap(InternalError::from_response(anyhow!("Error"), response));
@@ -62,7 +63,7 @@ fn test_audited_error_from_request_final_audit_event() {
     request
         .request()
         .extensions_mut()
-        .insert(AuditEvent::Final(ChainedAuditEvent::empty()));
+        .insert(AuditEvent::Final(FinalAuditEvent::token_not_present()));
 
     // Act
     AuditedError::from_request(&request, ErrorInternalServerError("Some error"));
@@ -78,7 +79,7 @@ fn test_audited_error_from_request_success() {
     request
         .request()
         .extensions_mut()
-        .insert(AuditEvent::Intermediate(ChainedAuditEvent::empty()));
+        .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
 
     // Act
     let error = AuditedError::from_request(&request, ErrorInternalServerError("Error"));
@@ -97,7 +98,7 @@ fn test_audited_error_external_token_not_present() {
     request
         .request()
         .extensions_mut()
-        .insert(AuditEvent::Intermediate(ChainedAuditEvent::empty()));
+        .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
 
     // Act
     let error = AuditedError::external_token_not_present(&request);
@@ -105,7 +106,7 @@ fn test_audited_error_external_token_not_present() {
     // Assert
     assert_matches!(error, audited_error => {
         assert_matches!(audited_error.event, AuditEvent::Final(
-            ChainedAuditEvent {
+            FinalAuditEvent{
                 external_token: Some(TokenAuditEvent {
                     reason_errors,
                     ..

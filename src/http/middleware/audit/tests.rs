@@ -2,8 +2,9 @@ use crate::contracts::internal_token::v2::boxer_claims::BoxerClaims;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
 use crate::http::middleware::audit::audit_scope::AuditScope;
 use crate::http::middleware::audit::audited_error::AuditedError;
+use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
+use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
 use crate::services::audit::chained::audit_event::AuditEvent;
-use crate::services::audit::chained::chained_audit_event::ChainedAuditEvent;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationResult;
@@ -11,21 +12,21 @@ use crate::services::base::upsert_repository::ReadOnlyRepository;
 use crate::services::encrypted_token_service::EncryptedTokenService;
 use crate::services::external_identity_validator::external_identity::ExternalIdentity;
 use crate::services::observability::open_telemetry::metrics::provider::MetricsProvider;
-use crate::services::token_decryption_service::TokenDecryptionService;
 use crate::services::token_decryption_service::encryption_keys::EncryptionKeys;
 use crate::services::token_decryption_service::token_settings::TokenValidationSettings;
-use crate::services::token_service::internal_token_service::token_provider::TokenProvider;
+use crate::services::token_decryption_service::TokenDecryptionService;
 use crate::services::token_service::internal_token_service::token_provider::principal::Principal;
 use crate::services::token_service::internal_token_service::token_provider::principal_service::PrincipalService;
-use crate::services::validation_service::ValidationService;
+use crate::services::token_service::internal_token_service::token_provider::TokenProvider;
 use crate::services::validation_service::cedar_validation_service::CedarValidationService;
 use crate::services::validation_service::path_segment::PathSegment;
 use crate::services::validation_service::request_context::RequestContext;
 use crate::services::validation_service::request_segment::RequestSegment;
 use crate::services::validation_service::schema_provider::SchemaProvider;
+use crate::services::validation_service::ValidationService;
 use actix_web::http::StatusCode;
-use actix_web::web::{ReqData, scope};
-use actix_web::{App, HttpMessage, HttpRequest, HttpResponse, test, web};
+use actix_web::web::{scope, ReqData};
+use actix_web::{test, web, App, HttpMessage, HttpRequest, HttpResponse};
 use anyhow::Result;
 use assert_matches::assert_matches;
 use async_trait::async_trait;
@@ -64,7 +65,7 @@ async fn test_token_not_present() {
 
         assert_matches!(cause, Some(AuditedError{
             event: AuditEvent::Final(
-                ChainedAuditEvent{
+                FinalAuditEvent{
                     external_token: Some(TokenAuditEvent{
                         token_id: _,
                         result: Some(TokenValidationResult::Deny),
@@ -72,13 +73,13 @@ async fn test_token_not_present() {
                         token_type: _
                     }),
                     internal_token: None,
-                    policy_evaluation_result: Some(PolicyEvaluationResult{
+                    policy_evaluation_result: PolicyEvaluationResult{
                     action: None,
                     actor: None,
                     resource: None,
                     decision: Decision::Deny,
                     reason: None
-                    })
+                    }
                 }
             ),
             ..
@@ -116,7 +117,7 @@ async fn test_broken_token() {
 
         assert_matches!(cause, Some(AuditedError{
             event: AuditEvent::Final(
-                ChainedAuditEvent{
+                FinalAuditEvent{
                     external_token: Some(TokenAuditEvent{
                         token_id: _,
                         result: Some(TokenValidationResult::Deny),
@@ -124,13 +125,13 @@ async fn test_broken_token() {
                         token_type: _,
                     }),
                     internal_token: None,
-                    policy_evaluation_result: Some(PolicyEvaluationResult{
+                    policy_evaluation_result: PolicyEvaluationResult{
                     action: None,
                     actor: None,
                     resource: None,
                     decision: Decision::Deny,
                     reason: None
-                    })
+                    }
                 }
             ),
             ..
@@ -150,7 +151,7 @@ async fn test_successful_token() {
             let event = request.extensions().get::<AuditEvent>().unwrap().clone();
             assert_matches!(
                 event,
-                AuditEvent::Intermediate(ChainedAuditEvent {
+                AuditEvent::Intermediate(IntermediateAuditEvent{
                     external_token: Some(TokenAuditEvent {
                         token_id: Some(_),
                         result: None,
@@ -158,7 +159,6 @@ async fn test_successful_token() {
                         token_type: Some(token_type)
                     }),
                     internal_token: None,
-                    policy_evaluation_result: None
                 }) => {
                     assert_eq!(token_type, "external".to_string());
                 }
@@ -341,7 +341,7 @@ impl MockAuditWriter {
             .withf(|event| {
                 matches!(
                     event,
-                    AuditEvent::Final(ChainedAuditEvent {
+                    AuditEvent::Final(FinalAuditEvent {
                         external_token: Some(TokenAuditEvent {
                             token_id: None,
                             result: Some(TokenValidationResult::Deny),
@@ -349,13 +349,13 @@ impl MockAuditWriter {
                             token_type: None,
                         }),
                         internal_token: None,
-                        policy_evaluation_result: Some(PolicyEvaluationResult {
+                        policy_evaluation_result: PolicyEvaluationResult {
                             action: None,
                             actor: None,
                             resource: None,
                             decision: Decision::Deny,
                             reason: None
-                        })
+                        }
                     })
                 )
             })
@@ -368,7 +368,7 @@ impl MockAuditWriter {
             .withf(|event| {
                 matches!(
                     event,
-                    AuditEvent::Final(ChainedAuditEvent {
+                    AuditEvent::Final(FinalAuditEvent{
                         external_token: Some(TokenAuditEvent {
                             token_id: Some(_),
                             result: _,
@@ -381,13 +381,13 @@ impl MockAuditWriter {
                             reason_errors: _,
                             token_type: Some(_),
                         }),
-                        policy_evaluation_result: Some(PolicyEvaluationResult {
+                        policy_evaluation_result: PolicyEvaluationResult {
                             action: Some(action),
                             actor: Some(actor),
                             resource: Some(resource),
                             reason: Some(reason),
                             decision: Decision::Allow,
-                        })
+                        }
                     }) if action == r#"Action::"post""#
                         && actor == r#"User::"alice""#
                         && resource == r#"Http::"example.com""#
