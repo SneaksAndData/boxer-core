@@ -21,5 +21,5 @@ fn test_parsing_invalid_token(#[case] token: &str) {
     let header = HeaderValue::from_str(token).unwrap();
     let token = ExternalToken::try_from(header).unwrap_err();
     let error_message = token.to_string();
-    assert_eq!(error_message, "Invalid token format");
+    assert_eq!(error_message, "Invalid header format. Expected `Bearer ...`");
 }

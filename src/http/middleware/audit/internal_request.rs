@@ -12,12 +12,12 @@ use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::http::middleware::request_with_token_id::RequestWithTokenId;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
-use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
+use actix_web::HttpMessage;
 use anyhow;
 use anyhow::Result;
 use upgrade_version::UpgradeVersion;
@@ -166,12 +166,12 @@ impl RequestWithToken for InternalRequest {
 impl TryFrom<ServiceRequest> for InternalRequest {
     type Error = AuditedError;
     fn try_from(value: ServiceRequest) -> Result<Self, Self::Error> {
-        if let Some(event) = value.extensions().get::<AuditEvent>() {
-            return Err(AuditedError::audit_chain_already_exists(event.clone()));
+        if !value.extensions().contains::<AuditEvent>() {
+            return Err(AuditedError::from_request(
+                &value,
+                ErrorInternalServerError("ExternalRequest: Audit event not found in request extensions"),
+            ));
         }
-        value
-            .extensions_mut()
-            .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
         Ok(InternalRequest(value))
     }
 }
