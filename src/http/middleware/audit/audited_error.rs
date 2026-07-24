@@ -2,8 +2,8 @@
 mod tests;
 
 use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
-use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::audit_event::AuditEvent;
+use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::InternalError;
 use actix_web::http::StatusCode;
@@ -22,7 +22,7 @@ pub struct AuditedError {
 impl AuditedError {
     /// Wraps a given `ResponseError` into an `AuditedError`, extracting the associated
     /// `AuditEvent` from the error's response extensions.
-    pub fn new<T>(mut event: AuditEvent, cause: T) -> AuditedError
+    pub fn new<T>(event: AuditEvent, cause: T) -> AuditedError
     where
         T: Display + Debug + 'static,
     {
