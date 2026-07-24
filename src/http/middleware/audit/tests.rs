@@ -262,10 +262,10 @@ impl MockAuditWriter {
             .returning(|_| ());
     }
 
-    fn expect_final_failed_internal_token_event(&mut self) -> () {
+    fn expect_final_failed_internal_token_event(&mut self, message: String) -> () {
         self.expect_write()
             .times(1)
-            .withf(|event| {
+            .withf(move |event| {
                 matches!(
                     event,
                     AuditEvent::Final(FinalAuditEvent {
@@ -282,7 +282,7 @@ impl MockAuditWriter {
                             decision: Decision::Deny,
                             reason: None
                         }
-                    }) if reason_errors.contains("token-extraction-failed: Internal token not present in request extensions")
+                    }) if reason_errors.contains(&message)
                 )
             })
             .returning(|_| ());
