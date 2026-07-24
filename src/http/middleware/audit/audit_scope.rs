@@ -20,7 +20,7 @@ use std::sync::Arc;
 /// and records a final audit event through the provided [`AuditWriter`].
 pub trait AuditScope {
     /// Wraps this scope with the audit middleware pipeline.
-    /// 
+    ///
     ///
     /// Middleware order is significant:
     /// - starts the audit chain (`begin_audit_chain`),
