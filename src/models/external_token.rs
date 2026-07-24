@@ -6,7 +6,7 @@ use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use actix_web::http::header::HeaderValue;
 
 /// Represents an external JWT Token used to authorize the `ExternalIdentity` and issue an `InternalToken`
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ExternalToken(String);
 
 /// Allows `ExternalToken` to be converted to a String
