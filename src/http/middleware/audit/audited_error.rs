@@ -2,13 +2,12 @@
 mod tests;
 
 use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
-use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::InternalError;
 use actix_web::http::StatusCode;
 use actix_web::{HttpMessage, ResponseError};
-use anyhow::anyhow;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
@@ -18,16 +17,6 @@ use std::fmt::{Debug, Display, Formatter};
 pub struct AuditedError {
     pub event: AuditEvent,
     cause: Box<dyn ResponseError>,
-}
-
-impl AuditedError {
-    pub(crate) fn audit_chain_already_exists(event: AuditEvent) -> AuditedError {
-        let cause = anyhow!("Duplicated audit event in the service request");
-        AuditedError {
-            event,
-            cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
-        }
-    }
 }
 
 impl AuditedError {
