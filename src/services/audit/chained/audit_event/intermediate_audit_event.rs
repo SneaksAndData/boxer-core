@@ -25,12 +25,12 @@ impl IntermediateAuditEvent {
         properties.external_token_id = self
             .external_token
             .as_ref()
-            .and_then(|token| token.token_id.clone())
+            .map(|token| token.token_id.clone())
             .unwrap_or_default();
         properties.internal_token_id = self
             .internal_token
             .as_ref()
-            .and_then(|token| token.token_id.clone())
+            .map(|token| token.token_id.clone())
             .unwrap_or_default();
 
         properties

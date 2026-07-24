@@ -20,6 +20,7 @@ use std::sync::Arc;
 /// and records a final audit event through the provided [`AuditWriter`].
 pub trait AuditScope {
     /// Wraps this scope with the audit middleware pipeline.
+    /// 
     ///
     /// Middleware order is significant:
     /// - starts the audit chain (`begin_audit_chain`),
@@ -27,6 +28,15 @@ pub trait AuditScope {
     /// - records the terminal audit event (`AuditRecorderFactory`).
     fn with_initial_audit_scope(self, writer: Arc<dyn AuditWriter>) -> impl HttpServiceFactory;
 
+    /// Wraps this scope with the continuation audit middleware pipeline.
+    ///
+    /// Use this on internal routes where the external token is already present and
+    /// an internal token must be extracted/decrypted before recording the final audit event.
+    ///
+    /// Middleware order is significant:
+    /// - extracts the encrypted internal token (`extract_encrypted_token`),
+    /// - decrypts and enriches request context (`TokenDecryptorMiddlewareFactory`),
+    /// - records the terminal audit event (`AuditRecorderFactory`).
     fn continue_audit_scope<D>(self, writer: Arc<dyn AuditWriter>, decryptor: Arc<D>) -> impl HttpServiceFactory
     where
         D: Decryptor + 'static;

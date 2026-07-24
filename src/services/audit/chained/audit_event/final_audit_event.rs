@@ -31,12 +31,12 @@ impl FinalAuditEvent {
         properties.external_token_id = self
             .external_token
             .as_ref()
-            .and_then(|token| token.token_id.clone())
+            .map(|token| token.token_id.clone())
             .unwrap_or_default();
         properties.internal_token_id = self
             .internal_token
             .as_ref()
-            .and_then(|token| token.token_id.clone())
+            .map(|token| token.token_id.clone())
             .unwrap_or_default();
 
         properties
@@ -47,12 +47,11 @@ impl FinalAuditEvent {
     pub fn token_not_present() -> Self {
         Self {
             external_token: Some(TokenAuditEvent {
-                token_id: None,
+                token_id: String::default(),
                 result: Some(TokenValidationResult::Deny),
                 reason_errors: hashset! {
                     "token-not-present".into()
                 },
-                token_type: None,
             }),
             internal_token: None,
             policy_evaluation_result: PolicyEvaluationResult::empty_deny(),
@@ -62,12 +61,11 @@ impl FinalAuditEvent {
     pub(crate) fn token_extraction_failed(reason: String) -> Self {
         Self {
             external_token: Some(TokenAuditEvent {
-                token_id: None,
+                token_id: String::default(),
                 result: Some(TokenValidationResult::Deny),
                 reason_errors: hashset! {
                     format!("token-extraction-failed: {}", reason)
                 },
-                token_type: None,
             }),
             internal_token: None,
             policy_evaluation_result: PolicyEvaluationResult::empty_deny(),

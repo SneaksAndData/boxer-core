@@ -12,12 +12,12 @@ use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::extract_external_token::token_with_id::TokenWithId;
 use crate::http::middleware::request_with_token_id::RequestWithTokenId;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
-use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use actix_web::HttpMessage;
 use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
+use actix_web::HttpMessage;
 use anyhow;
 use anyhow::Result;
 use upgrade_version::UpgradeVersion;
@@ -107,7 +107,7 @@ impl RequestWithTokenId for InternalRequest {
 
         {
             self.update_audit_event(|e: &mut IntermediateAuditEvent| {
-                e.internal_token = Some(TokenAuditEvent::external().with_token_id(&token_id));
+                e.internal_token = Some(TokenAuditEvent::external(token_id));
                 Ok(())
             })?;
             let mut binding = self.0.extensions_mut();

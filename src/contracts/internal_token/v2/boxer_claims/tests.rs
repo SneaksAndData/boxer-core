@@ -2,7 +2,7 @@ use super::*;
 use crate::contracts::dynamic_claims_collection::DynamicClaims;
 use crate::contracts::internal_token::v2::{PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, VALIDATOR_SCHEMA_ID_KEY};
 use pretty_assertions::assert_eq;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 
 #[test]
@@ -92,10 +92,9 @@ impl MockClaims {
         );
 
         let audit_event_serialized = serde_json::to_value(&TokenAuditEvent {
-            token_id: None,
+            token_id: "id".to_string(),
             result: None,
             reason_errors: HashSet::new(),
-            token_type: None,
         })
         .expect("Failed to serialize TokenAuditEvent");
         values.insert(AUDIT_EVENT, audit_event_serialized.clone());
@@ -103,7 +102,7 @@ impl MockClaims {
         let mut claims = HashMap::new();
         claims.insert(SCHEMA_ID_KEY, "schema-v1".to_string());
         claims.insert(VALIDATOR_SCHEMA_ID_KEY, "validator-schema-v1".to_string());
-        (claims).insert(AUDIT_EVENT, audit_event_serialized.to_string());
+        claims.insert(AUDIT_EVENT, audit_event_serialized.to_string());
 
         Self { values, claims }
     }

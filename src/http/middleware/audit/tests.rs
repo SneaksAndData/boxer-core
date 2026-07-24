@@ -2,9 +2,9 @@ use crate::contracts::internal_token::v2::boxer_claims::BoxerClaims;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
 use crate::http::middleware::audit::audit_scope::AuditScope;
 use crate::http::middleware::audit::audited_error::AuditedError;
-use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationResult;
@@ -12,21 +12,22 @@ use crate::services::base::upsert_repository::ReadOnlyRepository;
 use crate::services::encrypted_token_service::EncryptedTokenService;
 use crate::services::external_identity_validator::external_identity::ExternalIdentity;
 use crate::services::observability::open_telemetry::metrics::provider::MetricsProvider;
-use crate::services::token_decryption_service::TokenDecryptionService;
 use crate::services::token_decryption_service::encryption_keys::EncryptionKeys;
 use crate::services::token_decryption_service::token_settings::TokenValidationSettings;
-use crate::services::token_service::internal_token_service::token_provider::TokenProvider;
+use crate::services::token_decryption_service::TokenDecryptionService;
 use crate::services::token_service::internal_token_service::token_provider::principal::Principal;
 use crate::services::token_service::internal_token_service::token_provider::principal_service::PrincipalService;
-use crate::services::validation_service::ValidationService;
+use crate::services::token_service::internal_token_service::token_provider::TokenProvider;
 use crate::services::validation_service::cedar_validation_service::CedarValidationService;
 use crate::services::validation_service::path_segment::PathSegment;
 use crate::services::validation_service::request_context::RequestContext;
 use crate::services::validation_service::request_segment::RequestSegment;
 use crate::services::validation_service::schema_provider::SchemaProvider;
+use crate::services::validation_service::ValidationService;
+use actix_web::dev::ServiceResponse;
 use actix_web::http::StatusCode;
-use actix_web::web::{ReqData, scope};
-use actix_web::{App, HttpMessage, HttpRequest, HttpResponse, test, web};
+use actix_web::web::{scope, ReqData};
+use actix_web::{test, web, App, Error, HttpMessage, HttpRequest, HttpResponse};
 use anyhow::Result;
 use assert_matches::assert_matches;
 use async_trait::async_trait;
@@ -60,33 +61,7 @@ async fn test_token_not_present() {
     let response = test::try_call_service(&service, request).await;
 
     // Assert that the error in the result has the required structure
-    assert_matches!(response, Err(error) => {
-        let cause = error.as_error::<AuditedError>();
-
-        assert_matches!(cause, Some(AuditedError{
-            event: AuditEvent::Final(
-                FinalAuditEvent{
-                    external_token: Some(TokenAuditEvent{
-                        token_id: _,
-                        result: Some(TokenValidationResult::Deny),
-                        reason_errors,
-                        token_type: _
-                    }),
-                    internal_token: None,
-                    policy_evaluation_result: PolicyEvaluationResult{
-                    action: None,
-                    actor: None,
-                    resource: None,
-                    decision: Decision::Deny,
-                    reason: None
-                    }
-                }
-            ),
-            ..
-        }) => {
-            assert!(reason_errors.contains("token-not-present"), "{:?}", reason_errors)
-        })
-    });
+    assert_failed_with_message(response, "token-not-present");
 }
 
 #[actix_web::test]
@@ -95,10 +70,7 @@ async fn test_broken_token() {
     let mut writer = MockAuditWriter::new();
     writer.expect_final_failed_event();
 
-    let scope = scope("").route(
-        "/token",
-        web::to(|| async move { actix_web::HttpResponse::Ok().finish() }),
-    );
+    let scope = scope("").route("/token", web::to(|| async move { HttpResponse::Ok().finish() }));
     let pipeline = scope.with_initial_audit_scope(Arc::new(writer));
 
     let chain = App::new().service(pipeline);
@@ -112,33 +84,10 @@ async fn test_broken_token() {
     let response = test::try_call_service(&service, request).await;
 
     // Assert that the error in the result has the required structure
-    assert_matches!(response, Err(error) => {
-        let cause = error.as_error::<AuditedError>();
-
-        assert_matches!(cause, Some(AuditedError{
-            event: AuditEvent::Final(
-                FinalAuditEvent{
-                    external_token: Some(TokenAuditEvent{
-                        token_id: _,
-                        result: Some(TokenValidationResult::Deny),
-                        reason_errors,
-                        token_type: _,
-                    }),
-                    internal_token: None,
-                    policy_evaluation_result: PolicyEvaluationResult{
-                    action: None,
-                    actor: None,
-                    resource: None,
-                    decision: Decision::Deny,
-                    reason: None
-                    }
-                }
-            ),
-            ..
-        }) => {
-            assert!(reason_errors.contains("token-extraction-failed: Invalid token format"), "{:?}", reason_errors)
-        })
-    });
+    assert_failed_with_message(
+        response,
+        "token-extraction-failed: Invalid header format. Expected `Bearer ...`",
+    );
 }
 
 #[actix_web::test]
@@ -153,18 +102,20 @@ async fn test_successful_token() {
                 event,
                 AuditEvent::Intermediate(IntermediateAuditEvent{
                     external_token: Some(TokenAuditEvent {
-                        token_id: Some(_),
-                        result: None,
-                        reason_errors: _,
-                        token_type: Some(token_type)
+                        token_id,
+                        result,
+                        reason_errors,
                     }),
                     internal_token: None,
                 }) => {
-                    assert_eq!(token_type, "external".to_string());
+                    assert!(reason_errors.is_empty());
+                    assert!(result.is_none());
+                    assert_eq!(token_id, format!("md5:{:x}", md5::compute("TOKEN")));
+
                 }
             );
 
-            actix_web::HttpResponse::Ok().finish()
+            HttpResponse::Ok().finish()
         }),
     );
 
@@ -179,7 +130,7 @@ async fn test_successful_token() {
 
     let request = test::TestRequest::get()
         .uri("/token")
-        .append_header(("Authorization", "Bearer token"))
+        .append_header(("Authorization", "Bearer TOKEN"))
         .to_request();
 
     // Act
@@ -343,10 +294,9 @@ impl MockAuditWriter {
                     event,
                     AuditEvent::Final(FinalAuditEvent {
                         external_token: Some(TokenAuditEvent {
-                            token_id: None,
                             result: Some(TokenValidationResult::Deny),
                             reason_errors: _,
-                            token_type: None,
+                            ..
                         }),
                         internal_token: None,
                         policy_evaluation_result: PolicyEvaluationResult {
@@ -370,16 +320,14 @@ impl MockAuditWriter {
                     event,
                     AuditEvent::Final(FinalAuditEvent{
                         external_token: Some(TokenAuditEvent {
-                            token_id: Some(_),
+                            token_id: _,
                             result: _,
                             reason_errors: _,
-                            token_type: Some(_),
                         }),
                         internal_token: Some(TokenAuditEvent {
-                            token_id: Some(_),
+                            token_id: _,
                             result: _,
                             reason_errors: _,
-                            token_type: Some(_),
                         }),
                         policy_evaluation_result: PolicyEvaluationResult {
                             action: Some(action),
@@ -436,4 +384,27 @@ mock! {
         type ReadError = anyhow::Error;
         async fn get(&self, key: String) -> Result<PolicySet, anyhow::Error>;
     }
+}
+
+fn assert_failed_with_message(response: Result<ServiceResponse, Error>, message: &str) {
+    assert_matches!(response, Err(error) => {
+        let cause = error.as_error::<AuditedError>();
+
+        assert_matches!(cause, Some(AuditedError{
+            event: AuditEvent::Final(
+                FinalAuditEvent{
+                    external_token: Some(TokenAuditEvent{
+                        result: Some(TokenValidationResult::Deny),
+                        reason_errors,
+                        ..
+                    }),
+                    policy_evaluation_result: PolicyEvaluationResult{ decision: Decision::Deny, .. },
+                    ..
+                }
+            ),
+            ..
+        }) => {
+            assert!(reason_errors.contains(message), "{:?}", reason_errors)
+        })
+    });
 }
