@@ -1,4 +1,3 @@
-use crate::services::audit::events::token_validation_event::TokenValidationResult;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -8,7 +7,6 @@ use std::collections::HashSet;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenAuditEvent {
     pub token_id: String,
-    pub result: Option<TokenValidationResult>,
     pub reason_errors: HashSet<String>,
 }
 
@@ -17,7 +15,6 @@ impl TokenAuditEvent {
     pub fn external(token_id: String) -> Self {
         Self {
             token_id,
-            result: None,
             reason_errors: HashSet::new(),
         }
     }

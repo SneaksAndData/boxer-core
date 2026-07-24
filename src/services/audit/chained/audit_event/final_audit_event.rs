@@ -1,7 +1,6 @@
 use crate::services::audit::chained::audit_event::audit_event_properties::AuditEventProperties;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use crate::services::audit::events::token_validation_event::TokenValidationResult;
 use maplit::hashset;
 
 #[derive(Clone, Debug)]
@@ -48,7 +47,6 @@ impl FinalAuditEvent {
         Self {
             external_token: Some(TokenAuditEvent {
                 token_id: String::default(),
-                result: Some(TokenValidationResult::Deny),
                 reason_errors: hashset! {
                     "token-not-present".into()
                 },
@@ -62,7 +60,6 @@ impl FinalAuditEvent {
         Self {
             external_token: Some(TokenAuditEvent {
                 token_id: String::default(),
-                result: Some(TokenValidationResult::Deny),
                 reason_errors: hashset! {
                     format!("token-extraction-failed: {}", reason)
                 },
@@ -77,7 +74,6 @@ impl FinalAuditEvent {
             external_token: None,
             internal_token: Some(TokenAuditEvent {
                 token_id: String::default(),
-                result: Some(TokenValidationResult::Deny),
                 reason_errors: hashset! {
                     format!("token-extraction-failed: {}", reason)
                 },

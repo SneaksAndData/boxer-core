@@ -52,4 +52,16 @@ impl IntermediateAuditEvent {
             internal_token: None,
         }
     }
+
+    pub fn finalize_internal_token_error(&self, cause: String) -> FinalAuditEvent {
+        FinalAuditEvent {
+            external_token: self.external_token.clone(),
+            internal_token: self.internal_token.as_ref().map(|e| {
+                let mut token = e.clone();
+                token.reason_errors.insert(cause.clone());
+                token
+            }),
+            policy_evaluation_result: PolicyEvaluationResult::empty_deny(),
+        }
+    }
 }

@@ -1,15 +1,14 @@
 use crate::http::middleware::audit::audit_scope::AuditScope;
 use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::audit::tests::MockAuditWriter;
-use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use crate::services::audit::events::token_validation_event::TokenValidationResult;
 use actix_web::dev::ServiceResponse;
 use actix_web::web::scope;
-use actix_web::{App, Error, HttpMessage, HttpRequest, HttpResponse, test, web};
+use actix_web::{test, web, App, Error, HttpMessage, HttpRequest, HttpResponse};
 use assert_matches::assert_matches;
 use cedar_policy::Decision;
 use std::sync::Arc;
@@ -79,13 +78,11 @@ async fn test_successful_token() {
                 AuditEvent::Intermediate(IntermediateAuditEvent{
                     external_token: Some(TokenAuditEvent {
                         token_id,
-                        result,
                         reason_errors,
                     }),
                     internal_token: None,
                 }) => {
                     assert!(reason_errors.is_empty());
-                    assert!(result.is_none());
                     assert_eq!(token_id, format!("md5:{:x}", md5::compute("TOKEN")));
 
                 }
@@ -123,7 +120,6 @@ fn assert_external_token_message(response: anyhow::Result<ServiceResponse, Error
             event: AuditEvent::Final(
                 FinalAuditEvent{
                     external_token: Some(TokenAuditEvent{
-                        result: Some(TokenValidationResult::Deny),
                         reason_errors,
                         ..
                     }),

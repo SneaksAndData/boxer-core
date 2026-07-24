@@ -18,6 +18,18 @@ pub enum AuditEvent {
 }
 
 impl AuditEvent {
+    pub(crate) fn finalize_internal_token_error(&self, cause: String) -> AuditEvent {
+        match self {
+            AuditEvent::Intermediate(event) => {
+                let final_event = event.finalize_internal_token_error(cause);
+                AuditEvent::Final(final_event)
+            }
+            AuditEvent::Final(event) => panic!("AuditEvent is already finalized: {:?}", event),
+        }
+    }
+}
+
+impl AuditEvent {
     pub fn get_properties(self) -> AuditEventProperties {
         match self {
             AuditEvent::Final(event) => event.get_properties(),

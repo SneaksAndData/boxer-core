@@ -43,17 +43,19 @@ where
         let validator_schema_id = self
             .get_claim(VALIDATOR_SCHEMA_ID_KEY)
             .ok_or(anyhow::anyhow!("Missing schema_id"))?;
-
         let audit_event = self
             .get_value(AUDIT_EVENT)
             .ok_or(anyhow::anyhow!("Missing audit event"))?;
 
+        let schema =
+            SchemaFragment::from_json_value(schema.clone()).map_err(|e| anyhow::anyhow!("Invalid schema: {}", e))?;
+        let principal = Entity::from_json_value(principal.clone(), None)
+            .map_err(|e| anyhow::anyhow!("Invalid principal: {}", e))?;
+        let audit_event = serde_json::from_value(audit_event).ok();
         Ok(BoxerClaims {
-            schema: SchemaFragment::from_json_value(schema.clone())
-                .map_err(|e| anyhow::anyhow!("Invalid schema: {}", e))?,
-            principal: Entity::from_json_value(principal.clone(), None)
-                .map_err(|e| anyhow::anyhow!("Invalid principal: {}", e))?,
-            audit_event: serde_json::from_value(audit_event).ok(),
+            schema,
+            principal,
+            audit_event,
             schema_id,
             validator_schema_id,
         })

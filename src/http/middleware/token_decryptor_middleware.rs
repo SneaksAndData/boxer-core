@@ -7,7 +7,7 @@ use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
 use crate::services::audit::chained::audit_event::AuditEvent;
-use actix_web::dev::{Service, ServiceRequest, ServiceResponse, forward_ready};
+use actix_web::dev::{forward_ready, Service, ServiceRequest, ServiceResponse};
 use actix_web::error::ErrorInternalServerError;
 use futures_util::future::LocalBoxFuture;
 use std::marker::PhantomData;
@@ -45,11 +45,11 @@ where
             let encrypted_token = req.token();
             let claims = decryptor
                 .decrypt(encrypted_token)
-                .map_err(|e| AuditedError::new(event.clone(), ErrorInternalServerError(e)))?;
+                .map_err(|e| AuditedError::internal_token_error(event.clone(), ErrorInternalServerError(e)))?;
 
             next.call(
                 req.set_claims(claims)
-                    .map_err(|e| AuditedError::new(event, ErrorInternalServerError(e)))?,
+                    .map_err(|e| AuditedError::internal_token_error(event, ErrorInternalServerError(e)))?,
             )
             .await
         };
