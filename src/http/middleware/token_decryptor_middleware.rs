@@ -7,7 +7,7 @@ use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
 use crate::services::audit::chained::audit_event::AuditEvent;
-use actix_web::dev::{forward_ready, Service, ServiceRequest, ServiceResponse};
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse, forward_ready};
 use actix_web::error::ErrorInternalServerError;
 use futures_util::future::LocalBoxFuture;
 use std::marker::PhantomData;
