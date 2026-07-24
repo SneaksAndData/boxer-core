@@ -2,12 +2,12 @@ use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEve
 use crate::http::middleware::audit::audit_recorder::audit_recorder_factory::AuditRecorderFactory;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
 use crate::http::middleware::audit::audited_error::AuditedError;
-use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use actix_web::body::BoxBody;
 use actix_web::dev::ServiceResponse;
 use actix_web::error::ErrorInternalServerError;
-use actix_web::{App, Error, HttpMessage, HttpResponse, test, web};
+use actix_web::{test, web, App, Error, HttpMessage, HttpResponse};
 use anyhow::Result;
 use mockall::mock;
 use pretty_assertions::assert_matches;
@@ -144,9 +144,7 @@ mock! {
     pub AuditEventSource {}
 
     impl AuditEventSource<AuditEvent> for AuditEventSource {
-        type Error = actix_web::Error;
-
-        fn audit_event(&self) -> Result<AuditEvent, actix_web::Error>;
+        fn audit_event(&self) -> AuditEvent;
     }
 }
 
@@ -159,14 +157,12 @@ mock! {
     }
 }
 
-impl<B> TryFrom<ServiceResponse<B>> for MockAuditEventSource {
-    type Error = actix_web::Error;
-
-    fn try_from(_value: ServiceResponse<B>) -> Result<Self, Self::Error> {
+impl<B> From<ServiceResponse<B>> for MockAuditEventSource {
+    fn from(_value: ServiceResponse<B>) -> Self {
         let mut mock = MockAuditEventSource::new();
         mock.expect_audit_event()
-            .returning(|| Ok(AuditEvent::Intermediate(IntermediateAuditEvent::empty())));
-        Ok(mock)
+            .returning(|| AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
+        mock
     }
 }
 

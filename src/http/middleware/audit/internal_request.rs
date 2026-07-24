@@ -75,22 +75,23 @@ impl TryCreateAuditContext for InternalRequest {
 }
 
 impl AuditEventSource<IntermediateAuditEvent> for InternalRequest {
-    type Error = anyhow::Error;
-
     /// Returns the current [`IntermediateAuditEvent`] stored in the request extensions.
     ///
-    fn audit_event(&self) -> Result<IntermediateAuditEvent> {
-        let ae = self
-            .0
+    fn audit_event(&self) -> IntermediateAuditEvent {
+        match <Self as AuditEventSource<AuditEvent>>::audit_event(self) {
+            AuditEvent::Final(_) => panic!("Unexpected Final audit event in request extensions"),
+            AuditEvent::Intermediate(iae) => iae,
+        }
+    }
+}
+
+impl AuditEventSource<AuditEvent> for InternalRequest {
+    fn audit_event(&self) -> AuditEvent {
+        self.0
             .extensions()
             .get::<AuditEvent>()
             .cloned()
-            .ok_or_else(|| anyhow::anyhow!("AuditEvent not found in InternalRequest extensions"))?;
-
-        match ae {
-            AuditEvent::Final(_) => Err(anyhow::anyhow!("Unexpected Final audit event in request extensiosns")),
-            AuditEvent::Intermediate(iae) => Ok(iae),
-        }
+            .expect("AuditEvent not found in InternalRequest extensions")
     }
 }
 
@@ -133,7 +134,7 @@ impl RequestWithToken for InternalRequest {
         let boxer_claims = match version.as_str() {
             "v1" => {
                 let claims_v1 = V1ToBoxerClaims::to_boxer_claims(&claims)?;
-                let event = self.audit_event()?;
+                let event: IntermediateAuditEvent = self.audit_event();
                 claims_v1.upgrade_version(event.internal_token)
             }
             "v2" => V2ToBoxerClaims::to_boxer_claims(&claims)?,
@@ -149,14 +150,17 @@ impl RequestWithToken for InternalRequest {
         Ok(self.0)
     }
 
-    fn try_from_request(request: ServiceRequest) -> Result<Self, anyhow::Error> {
-        if !request.extensions().contains::<EncryptedToken>() {
-            anyhow::bail!("Missing required encrypted token extension");
-        };
-
+    fn try_from_request(request: ServiceRequest) -> Result<Self, AuditedError> {
         if !request.extensions().contains::<AuditEvent>() {
             panic!("Request does not contain AuditEvent in request extensions");
         }
+
+        if !request.extensions().contains::<EncryptedToken>() {
+            return Err(AuditedError::from_request(
+                &request,
+                ErrorInternalServerError("ExternalRequest: Encrypted token not found in request extensions"),
+            ));
+        };
 
         let internal_request = InternalRequest(request);
         Ok(internal_request)

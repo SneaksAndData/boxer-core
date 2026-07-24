@@ -1,8 +1,10 @@
-use crate::http::middleware::token_decryptor_middleware::TokenDecryptorMiddleware;
+use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
+use crate::http::middleware::token_decryptor_middleware::TokenDecryptorMiddleware;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
-use futures_util::future::{Ready, ready};
+use futures_util::future::{ready, Ready};
 use std::marker::PhantomData;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -28,7 +30,7 @@ where
     Next: Service<ServiceRequest, Response = ServiceResponse<Body>, Error = actix_web::Error> + 'static,
     Next::Future: 'static,
     Body: 'static,
-    R: RequestWithToken + 'static,
+    R: RequestWithToken + AuditEventSource<AuditEvent> + 'static,
     D: Decryptor + 'static,
 {
     type Response = ServiceResponse<Body>;
