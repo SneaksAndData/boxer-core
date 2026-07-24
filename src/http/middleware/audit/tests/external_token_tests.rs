@@ -1,14 +1,14 @@
 use crate::http::middleware::audit::audit_scope::AuditScope;
 use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::audit::tests::MockAuditWriter;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
-use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use actix_web::dev::ServiceResponse;
 use actix_web::web::scope;
-use actix_web::{test, web, App, Error, HttpMessage, HttpRequest, HttpResponse};
+use actix_web::{App, Error, HttpMessage, HttpRequest, HttpResponse, test, web};
 use assert_matches::assert_matches;
 use cedar_policy::Decision;
 use std::sync::Arc;
