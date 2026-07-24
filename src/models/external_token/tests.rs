@@ -1,5 +1,6 @@
 use super::ExternalToken;
 use actix_web::http::header::HeaderValue;
+use pretty_assertions::assert_eq;
 use rstest::rstest;
 
 #[rstest]

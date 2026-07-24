@@ -58,7 +58,7 @@ impl FinalAuditEvent {
         }
     }
 
-    pub(crate) fn token_extraction_failed(reason: String) -> Self {
+    pub(crate) fn external_token_extraction_failed(reason: String) -> Self {
         Self {
             external_token: Some(TokenAuditEvent {
                 token_id: String::default(),
@@ -68,6 +68,20 @@ impl FinalAuditEvent {
                 },
             }),
             internal_token: None,
+            policy_evaluation_result: PolicyEvaluationResult::empty_deny(),
+        }
+    }
+
+    pub(crate) fn internal_token_extraction_failed(reason: String) -> Self {
+        Self {
+            external_token: None,
+            internal_token: Some(TokenAuditEvent {
+                token_id: String::default(),
+                result: Some(TokenValidationResult::Deny),
+                reason_errors: hashset! {
+                    format!("token-extraction-failed: {}", reason)
+                },
+            }),
             policy_evaluation_result: PolicyEvaluationResult::empty_deny(),
         }
     }

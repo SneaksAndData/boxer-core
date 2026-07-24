@@ -1,10 +1,11 @@
+mod external_token_tests;
+mod internal_token_tests;
+
 use crate::contracts::internal_token::v2::boxer_claims::BoxerClaims;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
 use crate::http::middleware::audit::audit_scope::AuditScope;
-use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
-use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use crate::services::audit::events::token_validation_event::TokenValidationResult;
@@ -24,12 +25,10 @@ use crate::services::validation_service::path_segment::PathSegment;
 use crate::services::validation_service::request_context::RequestContext;
 use crate::services::validation_service::request_segment::RequestSegment;
 use crate::services::validation_service::schema_provider::SchemaProvider;
-use actix_web::dev::ServiceResponse;
 use actix_web::http::StatusCode;
 use actix_web::web::{ReqData, scope};
-use actix_web::{App, Error, HttpMessage, HttpRequest, HttpResponse, test, web};
+use actix_web::{App, HttpMessage, HttpRequest, HttpResponse, test, web};
 use anyhow::Result;
-use assert_matches::assert_matches;
 use async_trait::async_trait;
 use cedar_policy::PolicySet;
 use cedar_policy::SchemaFragment;
@@ -41,104 +40,8 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
-#[actix_web::test]
-async fn test_token_not_present() {
-    // Arrange
-    let scope = scope("").route(
-        "/token",
-        web::to(|| async move { actix_web::HttpResponse::Ok().finish() }),
-    );
-    let mut writer = MockAuditWriter::new();
-    writer.expect_final_failed_event();
-
-    let pipeline = scope.with_initial_audit_scope(Arc::new(writer));
-
-    let chain = App::new().service(pipeline);
-    let service = test::init_service(chain).await;
-    let request = test::TestRequest::get().uri("/token").to_request();
-
-    // Act
-    let response = test::try_call_service(&service, request).await;
-
-    // Assert that the error in the result has the required structure
-    assert_failed_with_message(response, "token-not-present");
-}
-
-#[actix_web::test]
-async fn test_broken_token() {
-    // Arrange
-    let mut writer = MockAuditWriter::new();
-    writer.expect_final_failed_event();
-
-    let scope = scope("").route("/token", web::to(|| async move { HttpResponse::Ok().finish() }));
-    let pipeline = scope.with_initial_audit_scope(Arc::new(writer));
-
-    let chain = App::new().service(pipeline);
-    let service = test::init_service(chain).await;
-    let request = test::TestRequest::get()
-        .uri("/token")
-        .append_header(("Authorization", "I am authorization"))
-        .to_request();
-
-    // Act
-    let response = test::try_call_service(&service, request).await;
-
-    // Assert that the error in the result has the required structure
-    assert_failed_with_message(
-        response,
-        "token-extraction-failed: Invalid header format. Expected `Bearer ...`",
-    );
-}
-
-#[actix_web::test]
-async fn test_successful_token() {
-    let scope = scope("").route(
-        "/token",
-        web::to(|request: HttpRequest| async move {
-            // Assert that the intermediate audit event has the expected structure and values
-
-            let event = request.extensions().get::<AuditEvent>().unwrap().clone();
-            assert_matches!(
-                event,
-                AuditEvent::Intermediate(IntermediateAuditEvent{
-                    external_token: Some(TokenAuditEvent {
-                        token_id,
-                        result,
-                        reason_errors,
-                    }),
-                    internal_token: None,
-                }) => {
-                    assert!(reason_errors.is_empty());
-                    assert!(result.is_none());
-                    assert_eq!(token_id, format!("md5:{:x}", md5::compute("TOKEN")));
-
-                }
-            );
-
-            HttpResponse::Ok().finish()
-        }),
-    );
-
-    // Arrange
-    let mut writer = MockAuditWriter::new();
-    writer.expect_write().times(1).returning(|_| ());
-
-    let pipeline = scope.with_initial_audit_scope(Arc::new(writer));
-    let chain = App::new() /*.app_data(Data::new(Arc::new(writer)))*/
-        .service(pipeline);
-    let service = test::init_service(chain).await;
-
-    let request = test::TestRequest::get()
-        .uri("/token")
-        .append_header(("Authorization", "Bearer TOKEN"))
-        .to_request();
-
-    // Act
-    let _ = test::try_call_service(&service, request).await;
-
-    // Assert is in the handler above
-}
-
+/// Integration tests that validates the issuance of the token version 1.
+/// This test tests happy path and includes both external and internal HTTP pipelines.
 #[actix_web::test]
 async fn test_token_v1() {
     // Arrange
@@ -384,27 +287,4 @@ mock! {
         type ReadError = anyhow::Error;
         async fn get(&self, key: String) -> Result<PolicySet, anyhow::Error>;
     }
-}
-
-fn assert_failed_with_message(response: Result<ServiceResponse, Error>, message: &str) {
-    assert_matches!(response, Err(error) => {
-        let cause = error.as_error::<AuditedError>();
-
-        assert_matches!(cause, Some(AuditedError{
-            event: AuditEvent::Final(
-                FinalAuditEvent{
-                    external_token: Some(TokenAuditEvent{
-                        result: Some(TokenValidationResult::Deny),
-                        reason_errors,
-                        ..
-                    }),
-                    policy_evaluation_result: PolicyEvaluationResult{ decision: Decision::Deny, .. },
-                    ..
-                }
-            ),
-            ..
-        }) => {
-            assert!(reason_errors.contains(message), "{:?}", reason_errors)
-        })
-    });
 }

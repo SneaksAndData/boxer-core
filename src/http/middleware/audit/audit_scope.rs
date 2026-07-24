@@ -53,8 +53,9 @@ impl AuditScope for Scope {
     where
         D: Decryptor + 'static,
     {
-        self.wrap(AuditRecorderFactory::<AuditedResponse<_>>::new(writer))
-            .wrap(TokenDecryptorMiddlewareFactory::<D, InternalRequest>::new(decryptor))
+        self.wrap(TokenDecryptorMiddlewareFactory::<D, InternalRequest>::new(decryptor))
             .wrap(from_fn(extract_encrypted_token::<InternalRequest, AuditedError>))
+            .wrap(AuditRecorderFactory::<AuditedResponse<_>>::new(writer))
+            .wrap(from_fn(begin_audit_chain::<InternalRequest>))
     }
 }

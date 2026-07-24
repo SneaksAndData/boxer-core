@@ -101,7 +101,7 @@ fn test_audited_error_external_token_not_present() {
         .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
 
     // Act
-    let error = AuditedError::external_token_not_present(&request);
+    let error = AuditedError::token_not_present(&request, false);
 
     // Assert
     assert_matches!(error, audited_error => {

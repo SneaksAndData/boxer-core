@@ -82,35 +82,14 @@ impl AuditedError {
 }
 
 impl ExternalTokenError for AuditedError {
-    /// Creates an `AuditedError` in case when the external token is not present.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the request does not contain an AuditEvent extension.
-    /// Panics if the contained AuditEvent is AuditEvent::Final, since final
-    /// audit events are not intended to be wrapped as errors.
-    /// Panics if token is not present, but audit event is not empty
-    fn external_token_not_present(request: &ServiceRequest) -> AuditedError {
-        let event = request
-            .extensions()
-            .get::<AuditEvent>()
-            .expect("Attempt to wrap a request for an error without audit event")
-            .clone();
-        match event {
-            AuditEvent::Final(_) => {
-                panic!("Final audit event in a request should not be wrapped for token not present error")
-            }
-            AuditEvent::Intermediate(data) if data.is_empty() => AuditedError {
-                event: AuditEvent::Final(FinalAuditEvent::token_not_present()),
-                cause: Box::new(InternalError::new(
-                    anyhow!("Token not present"),
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                )),
-            },
-            AuditEvent::Intermediate(data) => {
-                panic!("Non-empty audit event when token is not present: {:?}", data)
-            }
-        }
+    /// Returns an error for requests that do not include an `Authorization` header.
+    fn token_not_present(request: &ServiceRequest, internal: bool) -> Self {
+        let token_type = if internal { "Internal" } else { "External" };
+        AuditedError::token_extraction_failed(
+            &request,
+            internal,
+            anyhow::anyhow!("{} token not present in request extensions", token_type),
+        )
     }
 
     /// Creates an `AuditedError` for requests where an external token is present
@@ -127,7 +106,7 @@ impl ExternalTokenError for AuditedError {
     /// are not expected at this stage.
     /// Panics if the contained intermediate event is not empty because it is not expected in this
     /// context.
-    fn token_extraction_failed(request: &ServiceRequest, cause: anyhow::Error) -> Self {
+    fn token_extraction_failed(request: &ServiceRequest, internal: bool, cause: anyhow::Error) -> Self {
         let event = request
             .extensions()
             .get::<AuditEvent>()
@@ -137,24 +116,20 @@ impl ExternalTokenError for AuditedError {
             ))
             .clone();
         match event {
-            AuditEvent::Final(_) => {
-                panic!("Final audit event in a request should not be wrapped for token extracted error")
-            }
             AuditEvent::Intermediate(data) if data.is_empty() => AuditedError {
-                event: AuditEvent::Final(FinalAuditEvent::token_extraction_failed(cause.to_string())),
+                event: match internal {
+                    true => AuditEvent::Final(FinalAuditEvent::internal_token_extraction_failed(cause.to_string())),
+                    false => AuditEvent::Final(FinalAuditEvent::external_token_extraction_failed(cause.to_string())),
+                },
                 cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
             },
             AuditEvent::Intermediate(data) => {
                 panic!("Non-empty audit event when token is not present: {:?}", data)
             }
+            AuditEvent::Final(_) => {
+                panic!("Final audit event in a request should not be wrapped for token extracted error")
+            }
         }
-    }
-
-    fn token_not_present(request: &ServiceRequest) -> Self {
-        AuditedError::token_extraction_failed(
-            &request,
-            anyhow::anyhow!("Encrypted token not present in request extensions"),
-        )
     }
 }
 

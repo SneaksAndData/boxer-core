@@ -21,5 +21,5 @@ where
         + TryFrom<ServiceRequest, Error = AuditedError>
         + Into<ServiceRequest>,
 {
-    super::extract_token_from_header::<EncryptedToken, Request, Error>(request, next).await
+    super::extract_token_from_header::<EncryptedToken, Request, Error>(request, true, next).await
 }
