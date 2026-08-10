@@ -144,9 +144,7 @@ mock! {
     pub AuditEventSource {}
 
     impl AuditEventSource<AuditEvent> for AuditEventSource {
-        type Error = actix_web::Error;
-
-        fn audit_event(&self) -> Result<AuditEvent, actix_web::Error>;
+        fn audit_event(&self) -> AuditEvent;
     }
 }
 
@@ -159,14 +157,12 @@ mock! {
     }
 }
 
-impl<B> TryFrom<ServiceResponse<B>> for MockAuditEventSource {
-    type Error = actix_web::Error;
-
-    fn try_from(_value: ServiceResponse<B>) -> Result<Self, Self::Error> {
+impl<B> From<ServiceResponse<B>> for MockAuditEventSource {
+    fn from(_value: ServiceResponse<B>) -> Self {
         let mut mock = MockAuditEventSource::new();
         mock.expect_audit_event()
-            .returning(|| Ok(AuditEvent::Intermediate(IntermediateAuditEvent::empty())));
-        Ok(mock)
+            .returning(|| AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
+        mock
     }
 }
 

@@ -67,15 +67,13 @@ impl TryCreateAuditContext for ExternalRequest {
 }
 
 impl AuditEventSource<IntermediateAuditEvent> for ExternalRequest {
-    type Error = anyhow::Error;
-
     /// Returns the current [`IntermediateAuditEvent`] stored in the request extensions.
-    fn audit_event(&self) -> Result<IntermediateAuditEvent, Self::Error> {
+    fn audit_event(&self) -> IntermediateAuditEvent {
         self.0
             .extensions()
             .get::<IntermediateAuditEvent>()
             .cloned()
-            .ok_or_else(|| anyhow::anyhow!("Audited event not exists in request extensions"))
+            .expect("Audited event not exists in request extensions")
     }
 }
 
@@ -119,7 +117,7 @@ impl RequestWithTokenId for ExternalRequest {
 
         {
             self.update_audit_event(|e: &mut IntermediateAuditEvent| {
-                e.external_token = Some(TokenAuditEvent::external().with_token_id(&token_id));
+                e.external_token = Some(TokenAuditEvent::external(token_id));
                 Ok(())
             })?;
             let mut binding = self.0.extensions_mut();

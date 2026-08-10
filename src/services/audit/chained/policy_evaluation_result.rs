@@ -29,9 +29,7 @@ impl PolicyEvaluationResult {
             decision,
         }
     }
-}
 
-impl PolicyEvaluationResult {
     pub fn empty_deny() -> Self {
         Self {
             action: None,

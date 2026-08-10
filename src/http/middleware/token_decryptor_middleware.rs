@@ -2,10 +2,13 @@ pub mod decryptor;
 pub mod request_with_token;
 pub mod token_decryptor_middleware_factory;
 
+use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
+use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::http::middleware::token_decryptor_middleware::request_with_token::RequestWithToken;
+use crate::services::audit::chained::audit_event::AuditEvent;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, forward_ready};
-use actix_web::error::ErrorBadRequest;
+use actix_web::error::ErrorInternalServerError;
 use futures_util::future::LocalBoxFuture;
 use std::marker::PhantomData;
 use std::rc::Rc;
@@ -24,7 +27,7 @@ where
     Next::Future: 'static,
     Body: 'static,
     D: Decryptor + 'static,
-    R: RequestWithToken + 'static,
+    R: RequestWithToken + AuditEventSource<AuditEvent> + 'static,
 {
     type Response = ServiceResponse<Body>;
     type Error = actix_web::Error;
@@ -37,11 +40,18 @@ where
         let decryptor = self.decryptor.clone();
         let next = self.next.clone();
         let future = async move {
-            let req = R::try_from_request(req).map_err(ErrorBadRequest)?;
+            let req = R::try_from_request(req)?;
+            let event = req.audit_event();
             let encrypted_token = req.token();
-            let claims = decryptor.decrypt(encrypted_token).map_err(ErrorBadRequest)?;
+            let claims = decryptor
+                .decrypt(encrypted_token)
+                .map_err(|e| AuditedError::internal_token_error(event.clone(), ErrorInternalServerError(e)))?;
 
-            next.call(req.set_claims(claims).map_err(ErrorBadRequest)?).await
+            next.call(
+                req.set_claims(claims)
+                    .map_err(|e| AuditedError::internal_token_error(event, ErrorInternalServerError(e)))?,
+            )
+            .await
         };
         Box::pin(future)
     }

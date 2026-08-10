@@ -1,7 +1,6 @@
 use crate::services::audit::chained::audit_event::audit_event_properties::AuditEventProperties;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use crate::services::audit::events::token_validation_event::TokenValidationResult;
 use maplit::hashset;
 
 #[derive(Clone, Debug)]
@@ -31,12 +30,12 @@ impl FinalAuditEvent {
         properties.external_token_id = self
             .external_token
             .as_ref()
-            .and_then(|token| token.token_id.clone())
+            .map(|token| token.token_id.clone())
             .unwrap_or_default();
         properties.internal_token_id = self
             .internal_token
             .as_ref()
-            .and_then(|token| token.token_id.clone())
+            .map(|token| token.token_id.clone())
             .unwrap_or_default();
 
         properties
@@ -47,29 +46,38 @@ impl FinalAuditEvent {
     pub fn token_not_present() -> Self {
         Self {
             external_token: Some(TokenAuditEvent {
-                token_id: None,
-                result: Some(TokenValidationResult::Deny),
+                token_id: String::default(),
                 reason_errors: hashset! {
                     "token-not-present".into()
                 },
-                token_type: None,
             }),
             internal_token: None,
             policy_evaluation_result: PolicyEvaluationResult::empty_deny(),
         }
     }
 
-    pub(crate) fn token_extraction_failed(reason: String) -> Self {
+    pub(crate) fn external_token_extraction_failed(reason: String) -> Self {
         Self {
             external_token: Some(TokenAuditEvent {
-                token_id: None,
-                result: Some(TokenValidationResult::Deny),
+                token_id: String::default(),
                 reason_errors: hashset! {
                     format!("token-extraction-failed: {}", reason)
                 },
-                token_type: None,
             }),
             internal_token: None,
+            policy_evaluation_result: PolicyEvaluationResult::empty_deny(),
+        }
+    }
+
+    pub(crate) fn internal_token_extraction_failed(reason: String) -> Self {
+        Self {
+            external_token: None,
+            internal_token: Some(TokenAuditEvent {
+                token_id: String::default(),
+                reason_errors: hashset! {
+                    format!("token-extraction-failed: {}", reason)
+                },
+            }),
             policy_evaluation_result: PolicyEvaluationResult::empty_deny(),
         }
     }
