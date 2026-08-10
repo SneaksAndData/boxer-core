@@ -18,6 +18,7 @@ pub mod tracer;
 
 async fn extract_token_from_header<TokenType, Request, Error>(
     request: ServiceRequest,
+    internal: bool,
     next: Next<impl MessageBody>,
 ) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error>
 where
@@ -29,11 +30,11 @@ where
     let header_value = request.headers().get("Authorization").cloned();
 
     match header_value {
-        None => Err(Error::external_token_not_present(&request).into()),
+        None => Err(Error::token_not_present(&request, internal).into()),
 
         Some(header_value) => {
-            let token =
-                Request::Token::try_from(header_value).map_err(|e| Error::token_extraction_failed(&request, e))?;
+            let token = Request::Token::try_from(header_value)
+                .map_err(|e| Error::token_extraction_failed(&request, internal, e))?;
             let mut request = Request::try_from(request)?;
             request.add_token(token).map_err(ErrorInternalServerError)?;
             next.call(request.into()).await

@@ -25,12 +25,12 @@ impl IntermediateAuditEvent {
         properties.external_token_id = self
             .external_token
             .as_ref()
-            .and_then(|token| token.token_id.clone())
+            .map(|token| token.token_id.clone())
             .unwrap_or_default();
         properties.internal_token_id = self
             .internal_token
             .as_ref()
-            .and_then(|token| token.token_id.clone())
+            .map(|token| token.token_id.clone())
             .unwrap_or_default();
 
         properties
@@ -50,6 +50,18 @@ impl IntermediateAuditEvent {
         Self {
             external_token: None,
             internal_token: None,
+        }
+    }
+
+    pub fn finalize_internal_token_error(&self, cause: String) -> FinalAuditEvent {
+        FinalAuditEvent {
+            external_token: self.external_token.clone(),
+            internal_token: self.internal_token.as_ref().map(|e| {
+                let mut token = e.clone();
+                token.reason_errors.insert(cause.clone());
+                token
+            }),
+            policy_evaluation_result: PolicyEvaluationResult::empty_deny(),
         }
     }
 }

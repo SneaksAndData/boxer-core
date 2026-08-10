@@ -101,7 +101,7 @@ fn test_audited_error_external_token_not_present() {
         .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
 
     // Act
-    let error = AuditedError::external_token_not_present(&request);
+    let error = AuditedError::token_not_present(&request, false);
 
     // Assert
     assert_matches!(error, audited_error => {
@@ -112,7 +112,7 @@ fn test_audited_error_external_token_not_present() {
                     ..
                 }),
                 ..
-            }) if reason_errors.contains("token-not-present"));
-        assert_eq!(audited_error.cause.to_string(), "Token not present");
+            }) if reason_errors.contains("token-extraction-failed: External token not present in request extensions"));
+        assert_eq!(audited_error.cause.to_string(), "External token not present in request extensions");
     });
 }

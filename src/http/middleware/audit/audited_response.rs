@@ -9,32 +9,26 @@ use actix_web::dev::ServiceResponse;
 pub struct AuditedResponse<BodyType = BoxBody>(ServiceResponse<BodyType>);
 
 impl<BodyType> AuditEventSource<AuditEvent> for AuditedResponse<BodyType> {
-    type Error = actix_web::Error;
-
-    fn audit_event(&self) -> Result<AuditEvent, Self::Error> {
+    fn audit_event(&self) -> AuditEvent {
         self.0
             .request()
             .extensions()
             .get::<AuditEvent>()
             .cloned()
-            .ok_or_else(|| actix_web::error::ErrorInternalServerError("Audited event not exists in request extensions"))
+            .expect("Audited event not exists in request extensions")
     }
 }
 
-impl<BodyType> TryFrom<ServiceResponse<BodyType>> for AuditedResponse<BodyType> {
-    type Error = actix_web::Error;
-
+impl<BodyType> From<ServiceResponse<BodyType>> for AuditedResponse<BodyType> {
     /// Attempts to create an [`AuditedResponse`] from a [`ServiceResponse`] by checking if the request
     /// contains an [`FinalAuditEvent`] in its extensions. If the [`FinalAuditEvent`] is not found,
     /// an error is returned indicating that the response cannot be audited.
-    fn try_from(value: ServiceResponse<BodyType>) -> Result<Self, Self::Error> {
+    fn from(value: ServiceResponse<BodyType>) -> Self {
         let contains = { value.request().extensions().contains::<AuditEvent>() };
 
         match contains {
-            false => Err(actix_web::error::ErrorInternalServerError(
-                "AuditedResponse: Audit event not found in ServiceRequest request extensions",
-            )),
-            true => Ok(Self(value)),
+            false => panic!("AuditedResponse: Audit event not found in ServiceRequest request extensions"),
+            true => Self(value),
         }
     }
 }

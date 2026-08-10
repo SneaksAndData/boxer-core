@@ -92,10 +92,8 @@ impl MockClaims {
         );
 
         let audit_event_serialized = serde_json::to_value(&TokenAuditEvent {
-            token_id: None,
-            result: None,
+            token_id: "id".to_string(),
             reason_errors: HashSet::new(),
-            token_type: None,
         })
         .expect("Failed to serialize TokenAuditEvent");
         values.insert(AUDIT_EVENT, audit_event_serialized.clone());
@@ -103,7 +101,7 @@ impl MockClaims {
         let mut claims = HashMap::new();
         claims.insert(SCHEMA_ID_KEY, "schema-v1".to_string());
         claims.insert(VALIDATOR_SCHEMA_ID_KEY, "validator-schema-v1".to_string());
-        (claims).insert(AUDIT_EVENT, audit_event_serialized.to_string());
+        claims.insert(AUDIT_EVENT, audit_event_serialized.to_string());
 
         Self { values, claims }
     }
