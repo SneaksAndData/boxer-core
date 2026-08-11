@@ -16,22 +16,11 @@ impl IntermediateAuditEvent {
 }
 
 impl IntermediateAuditEvent {
-    pub fn get_properties(&self) -> AuditEventProperties {
-        let mut properties = AuditEventProperties {
-            is_final: false,
-            ..Default::default()
-        };
+    pub fn get_properties(self) -> AuditEventProperties {
+        let mut properties = AuditEventProperties::default();
 
-        properties.external_token_id = self
-            .external_token
-            .as_ref()
-            .map(|token| token.token_id.clone())
-            .unwrap_or_default();
-        properties.internal_token_id = self
-            .internal_token
-            .as_ref()
-            .map(|token| token.token_id.clone())
-            .unwrap_or_default();
+        properties.external_token_id = self.external_token.map(|token| token.token_id).unwrap_or_default();
+        properties.internal_token_id = self.internal_token.map(|token| token.token_id).unwrap_or_default();
 
         properties
     }
