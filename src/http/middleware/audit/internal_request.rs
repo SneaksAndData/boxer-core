@@ -5,7 +5,6 @@ pub mod upgrade_version;
 use super::begin_audit_chain::try_create_audit_context::TryCreateAuditContext;
 use crate::contracts::dynamic_claims_collection::{DynamicClaims, DynamicClaimsCollection};
 use crate::contracts::internal_token::encrypted_token::EncryptedToken;
-use crate::contracts::internal_token::v1::boxer_claims::ToBoxerClaims as V1ToBoxerClaims;
 use crate::contracts::internal_token::v2::boxer_claims::ToBoxerClaims as V2ToBoxerClaims;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
 use crate::http::middleware::audit::audited_error::AuditedError;
@@ -20,7 +19,6 @@ use actix_web::dev::ServiceRequest;
 use actix_web::error::ErrorInternalServerError;
 use anyhow;
 use anyhow::Result;
-use upgrade_version::UpgradeVersion;
 
 /// [`InternalRequest`] is a wrapper around `ServiceRequest` that indicates the request has been
 /// processed by the `begin_audit_chain` middleware and has an audit context initialized.
@@ -132,11 +130,6 @@ impl RequestWithToken for InternalRequest {
 
         let version = claims.get_version()?;
         let boxer_claims = match version.as_str() {
-            "v1" => {
-                let claims_v1 = V1ToBoxerClaims::to_boxer_claims(&claims)?;
-                let event: IntermediateAuditEvent = self.audit_event();
-                claims_v1.upgrade_version(event.internal_token)
-            }
             "v2" => V2ToBoxerClaims::to_boxer_claims(&claims)?,
             _ => return Err(anyhow::anyhow!("Unexpected claims version: {:?}", version)),
         };

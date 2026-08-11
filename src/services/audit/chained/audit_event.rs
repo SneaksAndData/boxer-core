@@ -4,6 +4,7 @@ pub mod intermediate_audit_event;
 
 use crate::services::audit::chained::audit_event::audit_event_properties::AuditEventProperties;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
+use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use final_audit_event::FinalAuditEvent;
 use intermediate_audit_event::IntermediateAuditEvent;
 
@@ -44,6 +45,18 @@ impl AuditEvent {
                 *self = AuditEvent::Final(final_event.clone());
             }
             AuditEvent::Final(event) => panic!("AuditEvent is already finalized: {:?}", event),
+        }
+    }
+
+    pub fn set_external_token(&mut self, external_token: TokenAuditEvent) {
+        match self {
+            AuditEvent::Intermediate(e) => {
+                *self = AuditEvent::Intermediate(IntermediateAuditEvent {
+                    external_token: Some(external_token),
+                    internal_token: e.internal_token.clone(),
+                })
+            }
+            _ => panic!("Cannot finalize an AuditEvent that is already Final"),
         }
     }
 }

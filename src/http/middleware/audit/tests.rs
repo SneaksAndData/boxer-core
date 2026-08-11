@@ -43,7 +43,7 @@ use std::sync::Arc;
 /// Integration tests that validates the issuance of the token version 1.
 /// This test tests happy path and includes both external and internal HTTP pipelines.
 #[actix_web::test]
-async fn test_token_v1() {
+async fn test_token_v2() {
     // Arrange
     let mut mock_principal_service = MockPrincipalService::new();
     let principal = Principal::new(make_principal_entity(), "schema-v1".into());
@@ -70,7 +70,10 @@ async fn test_token_v1() {
     );
 
     let token = token_service
-        .issue_token(ExternalIdentity::for_test("user-id", "identity-provider"))
+        .issue_token(
+            ExternalIdentity::for_test("user-id", "identity-provider"),
+            TokenAuditEvent::external("token-id"),
+        )
         .await
         .unwrap();
 

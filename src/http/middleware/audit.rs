@@ -6,5 +6,6 @@ pub mod external_request;
 pub mod internal_request;
 
 pub mod audit_scope;
+pub mod extract_external_token_event;
 #[cfg(test)]
 mod tests;

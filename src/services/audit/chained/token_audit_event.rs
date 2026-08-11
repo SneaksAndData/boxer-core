@@ -12,9 +12,9 @@ pub struct TokenAuditEvent {
 
 impl TokenAuditEvent {
     /// Creates a new TokenAuditEvent for an external token validation, with no token ID or errors.
-    pub fn external(token_id: String) -> Self {
+    pub fn external(token_id: impl Into<String>) -> Self {
         Self {
-            token_id,
+            token_id: token_id.into(),
             reason_errors: HashSet::new(),
         }
     }
