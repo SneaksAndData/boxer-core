@@ -11,32 +11,20 @@ pub struct FinalAuditEvent {
 }
 
 impl FinalAuditEvent {
-    pub fn get_properties(&self) -> AuditEventProperties {
-        let mut properties = AuditEventProperties {
-            is_final: true,
-            decision: self.policy_evaluation_result.decision.clone(),
-            ..Default::default()
-        };
+    pub fn get_properties(self) -> AuditEventProperties {
+        let mut properties = AuditEventProperties::new(self.policy_evaluation_result.decision);
 
-        properties.action = self.policy_evaluation_result.action.clone().unwrap_or_default();
-        properties.actor = self.policy_evaluation_result.actor.clone().unwrap_or_default();
-        properties.resource = self.policy_evaluation_result.resource.clone().unwrap_or_default();
-        properties.reason = self.policy_evaluation_result.reason.clone().unwrap_or_else(|| {
+        properties.action = self.policy_evaluation_result.action.unwrap_or_default();
+        properties.actor = self.policy_evaluation_result.actor.unwrap_or_default();
+        properties.resource = self.policy_evaluation_result.resource.unwrap_or_default();
+        properties.reason = self.policy_evaluation_result.reason.unwrap_or_else(|| {
             crate::services::audit::events::authorization_audit_event::Reason {
                 policies: Default::default(),
                 errors: Default::default(),
             }
         });
-        properties.external_token_id = self
-            .external_token
-            .as_ref()
-            .map(|token| token.token_id.clone())
-            .unwrap_or_default();
-        properties.internal_token_id = self
-            .internal_token
-            .as_ref()
-            .map(|token| token.token_id.clone())
-            .unwrap_or_default();
+        properties.external_token_id = self.external_token.map(|token| token.token_id).unwrap_or_default();
+        properties.internal_token_id = self.internal_token.map(|token| token.token_id).unwrap_or_default();
 
         properties
     }

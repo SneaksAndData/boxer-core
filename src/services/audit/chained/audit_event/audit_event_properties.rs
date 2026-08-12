@@ -11,17 +11,32 @@ pub struct AuditEventProperties {
 
     pub reason: Reason,
 
-    pub decision: Decision,
-
     pub external_token_id: String,
 
     pub internal_token_id: String,
+
+    decision: Option<Decision>,
+}
+
+impl AuditEventProperties {
+    pub fn new(decision: Decision) -> Self {
+        Self {
+            decision: Some(decision),
+            ..Default::default()
+        }
+    }
+
+    pub fn decision(&self) -> String {
+        self.decision
+            .map(|decision| format!("{:?}", decision))
+            .unwrap_or("".to_string())
+    }
 }
 
 impl Default for AuditEventProperties {
     fn default() -> Self {
         Self {
-            is_final: Default::default(),
+            is_final: false,
             action: Default::default(),
             actor: Default::default(),
             resource: Default::default(),
@@ -29,7 +44,7 @@ impl Default for AuditEventProperties {
                 policies: Default::default(),
                 errors: Default::default(),
             },
-            decision: Decision::Deny,
+            decision: None,
             external_token_id: Default::default(),
             internal_token_id: Default::default(),
         }

@@ -130,14 +130,14 @@ impl AuditWriter for LogAuditService {
             action = payload.action,
             actor = payload.actor,
             resource = payload.resource,
-            decision:serde = payload.decision,
+            decision:serde = payload.decision(),
             reason_policies:serde = payload.reason.policies,
             reason_errors:serde = payload.reason.errors,
             external_token_id = payload.external_token_id,
             internal_token_id = payload.internal_token_id;
 
             // The log message
-            "Boxer audit event recorded with decision: {:?}", payload.decision
+            "Boxer audit event recorded with decision: {:?}", payload.decision()
         );
     }
 }
