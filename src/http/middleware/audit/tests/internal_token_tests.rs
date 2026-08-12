@@ -35,9 +35,7 @@ async fn test_token_not_present() {
         web::to(|| async move { actix_web::HttpResponse::Ok().finish() }),
     );
     let mut writer = MockAuditWriter::new();
-    writer.expect_final_failed_internal_token_event(
-        "token-extraction-failed: Internal token not present in request extensions".to_string(),
-    );
+    writer.expect_final_failed_internal_token_event("Internal token not present in request extensions".to_string());
 
     let pipeline = scope.continue_audit_scope(Arc::new(writer), Arc::new(MockDecryptor::new()));
 
@@ -49,19 +47,14 @@ async fn test_token_not_present() {
     let response = test::try_call_service(&service, request).await;
 
     // Assert that the error in the result has the required structure
-    assert_internal_token_message(
-        response,
-        "token-extraction-failed: Internal token not present in request extensions",
-    );
+    assert_internal_token_message(response, "Internal token not present in request extensions");
 }
 
 #[actix_web::test]
 async fn test_broken_token_format() {
     // Arrange
     let mut writer = MockAuditWriter::new();
-    writer.expect_final_failed_internal_token_event(
-        "token-extraction-failed: Invalid header format. Expected `Bearer ...`".to_string(),
-    );
+    writer.expect_final_failed_internal_token_event("Invalid header format. Expected `Bearer ...`".to_string());
 
     let scope = scope("").route("/token", web::to(|| async move { HttpResponse::Ok().finish() }));
     let pipeline = scope.continue_audit_scope(Arc::new(writer), Arc::new(MockDecryptor::new()));
@@ -77,10 +70,7 @@ async fn test_broken_token_format() {
     let response = test::try_call_service(&service, request).await;
 
     // Assert that the error in the result has the required structure
-    assert_internal_token_message(
-        response,
-        "token-extraction-failed: Invalid header format. Expected `Bearer ...`",
-    );
+    assert_internal_token_message(response, "Invalid header format. Expected `Bearer ...`");
 }
 
 #[actix_web::test]
