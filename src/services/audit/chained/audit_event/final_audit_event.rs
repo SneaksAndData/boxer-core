@@ -57,7 +57,7 @@ impl FinalAuditEvent {
 
     #[cfg(test)]
     /// Constructor that should be used in tests. Should not be used in production code.
-    pub fn for_test() -> Self {
+    pub(crate) fn for_test() -> Self {
         Self {
             external_token: Some(TokenAuditEvent {
                 token_id: String::default(),
