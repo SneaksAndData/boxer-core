@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 
 /// [`TokenAuditEvent`] represents the audit information related to a token validation,
 /// including the token's ID, the result of the validation, any errors that occurred during
@@ -7,7 +6,6 @@ use std::collections::HashSet;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenAuditEvent {
     pub token_id: String,
-    pub reason_errors: HashSet<String>,
 }
 
 impl TokenAuditEvent {
@@ -15,7 +13,6 @@ impl TokenAuditEvent {
     pub fn external(token_id: impl Into<String>) -> Self {
         Self {
             token_id: token_id.into(),
-            reason_errors: HashSet::new(),
         }
     }
 }

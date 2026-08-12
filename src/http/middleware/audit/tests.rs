@@ -9,6 +9,7 @@ use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditE
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
+use crate::services::audit::events::authorization_audit_event::Reason;
 use crate::services::base::upsert_repository::ReadOnlyRepository;
 use crate::services::encrypted_token_service::EncryptedTokenService;
 use crate::services::external_identity_validator::external_identity::ExternalIdentity;
@@ -211,7 +212,7 @@ impl MockAuditWriter {
                 matches!(
                     event,
                     AuditEvent::Final(FinalAuditEvent {
-                        external_token: Some(TokenAuditEvent { reason_errors: _, .. }),
+                        external_token: Some(_),
                         internal_token: None,
                         policy_evaluation_result: PolicyEvaluationResult {
                             action: None,
@@ -233,14 +234,8 @@ impl MockAuditWriter {
                 matches!(
                     event,
                     AuditEvent::Final(FinalAuditEvent{
-                        external_token: Some(TokenAuditEvent {
-                            token_id: _,
-                            reason_errors: _,
-                        }),
-                        internal_token: Some(TokenAuditEvent {
-                            token_id: _,
-                            reason_errors: _,
-                        }),
+                        external_token: Some(_),
+                        internal_token: Some(_),
                         policy_evaluation_result: PolicyEvaluationResult {
                             action: Some(action),
                             actor: Some(actor),
@@ -266,16 +261,16 @@ impl MockAuditWriter {
                     event,
                     AuditEvent::Final(FinalAuditEvent {
                         external_token: None,
-                        internal_token: Some(TokenAuditEvent {
-                            reason_errors,
-                            ..
-                        }),
+                        internal_token: Some(_),
                         policy_evaluation_result: PolicyEvaluationResult {
                             action: None,
                             actor: None,
                             resource: None,
                             decision: Decision::Deny,
-                            reason: None
+                            reason: Some(Reason{
+                                errors: reason_errors,
+                                ..
+                            })
                         }
                     }) if reason_errors.contains(&message)
                 )

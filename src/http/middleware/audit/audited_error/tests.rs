@@ -3,7 +3,6 @@ use crate::http::middleware::extract_external_token::external_token_error::Exter
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
-use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
 use actix_web::error::{ErrorInternalServerError, InternalError};
 use actix_web::http::StatusCode;
 use actix_web::test::TestRequest;
@@ -63,7 +62,7 @@ fn test_audited_error_from_request_final_audit_event() {
     request
         .request()
         .extensions_mut()
-        .insert(AuditEvent::Final(FinalAuditEvent::token_not_present()));
+        .insert(AuditEvent::Final(FinalAuditEvent::for_test()));
 
     // Act
     AuditedError::from_request(&request, ErrorInternalServerError("Some error"));
@@ -107,12 +106,10 @@ fn test_audited_error_external_token_not_present() {
     assert_matches!(error, audited_error => {
         assert_matches!(audited_error.event, AuditEvent::Final(
             FinalAuditEvent{
-                external_token: Some(TokenAuditEvent {
-                    reason_errors,
-                    ..
-                }),
+                external_token: Some(_),
                 ..
-            }) if reason_errors.contains("token-extraction-failed: External token not present in request extensions"));
+            })
+        );
         assert_eq!(audited_error.cause.to_string(), "External token not present in request extensions");
     });
 }

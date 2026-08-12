@@ -13,6 +13,7 @@ use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditE
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
+use crate::services::audit::events::authorization_audit_event::Reason;
 use crate::services::token_decryption_service::TokenDecryptionService;
 use crate::services::token_decryption_service::encryption_keys::EncryptionKeys;
 use crate::services::token_decryption_service::token_settings::TokenValidationSettings;
@@ -126,10 +127,9 @@ async fn test_successful_token() {
             assert_matches::assert_matches!(
                 event,
                 AuditEvent::Intermediate(IntermediateAuditEvent{
-                    internal_token: Some(TokenAuditEvent { token_id, reason_errors, }),
+                    internal_token: Some(TokenAuditEvent { token_id, }),
                     external_token: Some(TokenAuditEvent { token_id: external_token_id, .. }),
                 }) => {
-                    assert!(reason_errors.is_empty());
                     assert_eq!(token_id, format!("md5:{:x}", md5::compute("TOKEN")));
                     assert_eq!(external_token_id, "token-id");
 
@@ -208,11 +208,9 @@ fn assert_internal_token_message(response: anyhow::Result<ServiceResponse, Error
         assert_matches!(cause, Some(AuditedError{
             event: AuditEvent::Final(
                 FinalAuditEvent{
-                    internal_token: Some(TokenAuditEvent{
-                        reason_errors,
-                        ..
-                    }),
-                    policy_evaluation_result: PolicyEvaluationResult{ decision: Decision::Deny, .. },
+                    internal_token: Some(_),
+                    external_token: None,
+                    policy_evaluation_result: PolicyEvaluationResult{ decision: Decision::Deny, reason: Some(Reason{errors: reason_errors, ..}), .. },
                     ..
                 }
             ),

@@ -18,7 +18,6 @@ fn test_serialization_integrity() {
         "validator-schema-v1".to_string(),
         TokenAuditEvent {
             token_id: "".to_string(),
-            reason_errors: Default::default(),
         },
     );
 

@@ -31,29 +31,15 @@ impl FinalAuditEvent {
 }
 
 impl FinalAuditEvent {
-    pub fn token_not_present() -> Self {
-        Self {
-            external_token: Some(TokenAuditEvent {
-                token_id: String::default(),
-                reason_errors: hashset! {
-                    "token-not-present".into()
-                },
-            }),
-            internal_token: None,
-            policy_evaluation_result: PolicyEvaluationResult::empty_deny(),
-        }
-    }
-
     pub(crate) fn external_token_extraction_failed(reason: String) -> Self {
         Self {
             external_token: Some(TokenAuditEvent {
                 token_id: String::default(),
-                reason_errors: hashset! {
-                    format!("token-extraction-failed: {}", reason)
-                },
             }),
             internal_token: None,
-            policy_evaluation_result: PolicyEvaluationResult::empty_deny(),
+            policy_evaluation_result: PolicyEvaluationResult::with_custom_errors(hashset! {
+                reason
+            }),
         }
     }
 
@@ -62,11 +48,22 @@ impl FinalAuditEvent {
             external_token: None,
             internal_token: Some(TokenAuditEvent {
                 token_id: String::default(),
-                reason_errors: hashset! {
-                    format!("token-extraction-failed: {}", reason)
-                },
             }),
-            policy_evaluation_result: PolicyEvaluationResult::empty_deny(),
+            policy_evaluation_result: PolicyEvaluationResult::with_custom_errors(hashset! {
+                reason
+            }),
+        }
+    }
+
+    #[cfg(test)]
+    /// Constructor that should be used in tests. Should not be used in production code.
+    pub fn for_test() -> Self {
+        Self {
+            external_token: Some(TokenAuditEvent {
+                token_id: String::default(),
+            }),
+            internal_token: None,
+            policy_evaluation_result: PolicyEvaluationResult::with_custom_errors(hashset! {}),
         }
     }
 }

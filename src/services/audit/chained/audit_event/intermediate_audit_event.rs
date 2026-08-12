@@ -2,6 +2,7 @@ use crate::services::audit::chained::audit_event::audit_event_properties::AuditE
 use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
+use maplit::hashset;
 
 #[derive(Clone, Debug)]
 pub struct IntermediateAuditEvent {
@@ -42,15 +43,13 @@ impl IntermediateAuditEvent {
         }
     }
 
-    pub fn finalize_internal_token_error(&self, cause: String) -> FinalAuditEvent {
+    pub fn finalize_internal_token_error(self, cause: String) -> FinalAuditEvent {
         FinalAuditEvent {
-            external_token: self.external_token.clone(),
-            internal_token: self.internal_token.as_ref().map(|e| {
-                let mut token = e.clone();
-                token.reason_errors.insert(cause.clone());
-                token
+            external_token: self.external_token,
+            internal_token: self.internal_token,
+            policy_evaluation_result: PolicyEvaluationResult::with_custom_errors(hashset! {
+                cause
             }),
-            policy_evaluation_result: PolicyEvaluationResult::empty_deny(),
         }
     }
 }

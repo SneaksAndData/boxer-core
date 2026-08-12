@@ -19,7 +19,7 @@ pub enum AuditEvent {
 }
 
 impl AuditEvent {
-    pub(crate) fn finalize_internal_token_error(&self, cause: String) -> AuditEvent {
+    pub(crate) fn finalize_internal_token_error(self, cause: String) -> AuditEvent {
         match self {
             AuditEvent::Intermediate(event) => {
                 let final_event = event.finalize_internal_token_error(cause);

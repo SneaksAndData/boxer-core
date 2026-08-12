@@ -1,6 +1,7 @@
 use crate::services::audit::events::authorization_audit_event::Reason;
 use cedar_policy::Decision;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 /// Describes the Cedar policy evaluation result in the event.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,12 +31,15 @@ impl PolicyEvaluationResult {
         }
     }
 
-    pub fn empty_deny() -> Self {
+    pub(crate) fn with_custom_errors(errors: HashSet<String>) -> Self {
         Self {
             action: None,
             actor: None,
             resource: None,
-            reason: None,
+            reason: Some(Reason {
+                policies: HashSet::new(),
+                errors,
+            }),
             decision: Decision::Deny,
         }
     }
