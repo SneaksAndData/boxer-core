@@ -6,6 +6,7 @@ use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditE
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
+use crate::services::audit::events::authorization_audit_event::Reason;
 use actix_web::dev::ServiceResponse;
 use actix_web::web::scope;
 use actix_web::{App, Error, HttpMessage, HttpRequest, HttpResponse, test, web};
@@ -16,10 +17,7 @@ use std::sync::Arc;
 #[actix_web::test]
 async fn test_token_not_present() {
     // Arrange
-    let scope = scope("").route(
-        "/token",
-        web::to(|| async move { actix_web::HttpResponse::Ok().finish() }),
-    );
+    let scope = scope("").route("/token", web::to(|| async move { HttpResponse::Ok().finish() }));
     let mut writer = MockAuditWriter::new();
     writer.expect_final_failed_event();
 
@@ -33,10 +31,7 @@ async fn test_token_not_present() {
     let response = test::try_call_service(&service, request).await;
 
     // Assert that the error in the result has the required structure
-    assert_external_token_message(
-        response,
-        "token-extraction-failed: External token not present in request extensions",
-    );
+    assert_external_token_message(response, "External token not present in request extensions");
 }
 
 #[actix_web::test]
@@ -59,10 +54,7 @@ async fn test_broken_token() {
     let response = test::try_call_service(&service, request).await;
 
     // Assert that the error in the result has the required structure
-    assert_external_token_message(
-        response,
-        "token-extraction-failed: Invalid header format. Expected `Bearer ...`",
-    );
+    assert_external_token_message(response, "Invalid header format. Expected `Bearer ...`");
 }
 
 #[actix_web::test]
@@ -76,13 +68,9 @@ async fn test_successful_token() {
             assert_matches::assert_matches!(
                 event,
                 AuditEvent::Intermediate(IntermediateAuditEvent{
-                    external_token: Some(TokenAuditEvent {
-                        token_id,
-                        reason_errors,
-                    }),
+                    external_token: Some(TokenAuditEvent { token_id, }),
                     internal_token: None,
                 }) => {
-                    assert!(reason_errors.is_empty());
                     assert_eq!(token_id, format!("md5:{:x}", md5::compute("TOKEN")));
 
                 }
@@ -119,11 +107,9 @@ fn assert_external_token_message(response: anyhow::Result<ServiceResponse, Error
         assert_matches!(cause, Some(AuditedError{
             event: AuditEvent::Final(
                 FinalAuditEvent{
-                    external_token: Some(TokenAuditEvent{
-                        reason_errors,
-                        ..
-                    }),
-                    policy_evaluation_result: PolicyEvaluationResult{ decision: Decision::Deny, .. },
+                    external_token: Some(_),
+                    internal_token: None,
+                    policy_evaluation_result: PolicyEvaluationResult{ decision: Decision::Deny, reason: Some(Reason{errors: reason_errors, ..}), .. },
                     ..
                 }
             ),

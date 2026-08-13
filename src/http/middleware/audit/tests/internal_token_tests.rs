@@ -13,6 +13,7 @@ use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditE
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
 use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
+use crate::services::audit::events::authorization_audit_event::Reason;
 use crate::services::token_decryption_service::TokenDecryptionService;
 use crate::services::token_decryption_service::encryption_keys::EncryptionKeys;
 use crate::services::token_decryption_service::token_settings::TokenValidationSettings;
@@ -34,9 +35,7 @@ async fn test_token_not_present() {
         web::to(|| async move { actix_web::HttpResponse::Ok().finish() }),
     );
     let mut writer = MockAuditWriter::new();
-    writer.expect_final_failed_internal_token_event(
-        "token-extraction-failed: Internal token not present in request extensions".to_string(),
-    );
+    writer.expect_final_failed_internal_token_event("Internal token not present in request extensions".to_string());
 
     let pipeline = scope.continue_audit_scope(Arc::new(writer), Arc::new(MockDecryptor::new()));
 
@@ -48,19 +47,14 @@ async fn test_token_not_present() {
     let response = test::try_call_service(&service, request).await;
 
     // Assert that the error in the result has the required structure
-    assert_internal_token_message(
-        response,
-        "token-extraction-failed: Internal token not present in request extensions",
-    );
+    assert_internal_token_message(response, "Internal token not present in request extensions");
 }
 
 #[actix_web::test]
 async fn test_broken_token_format() {
     // Arrange
     let mut writer = MockAuditWriter::new();
-    writer.expect_final_failed_internal_token_event(
-        "token-extraction-failed: Invalid header format. Expected `Bearer ...`".to_string(),
-    );
+    writer.expect_final_failed_internal_token_event("Invalid header format. Expected `Bearer ...`".to_string());
 
     let scope = scope("").route("/token", web::to(|| async move { HttpResponse::Ok().finish() }));
     let pipeline = scope.continue_audit_scope(Arc::new(writer), Arc::new(MockDecryptor::new()));
@@ -76,10 +70,7 @@ async fn test_broken_token_format() {
     let response = test::try_call_service(&service, request).await;
 
     // Assert that the error in the result has the required structure
-    assert_internal_token_message(
-        response,
-        "token-extraction-failed: Invalid header format. Expected `Bearer ...`",
-    );
+    assert_internal_token_message(response, "Invalid header format. Expected `Bearer ...`");
 }
 
 #[actix_web::test]
@@ -126,10 +117,9 @@ async fn test_successful_token() {
             assert_matches::assert_matches!(
                 event,
                 AuditEvent::Intermediate(IntermediateAuditEvent{
-                    internal_token: Some(TokenAuditEvent { token_id, reason_errors, }),
+                    internal_token: Some(TokenAuditEvent { token_id, }),
                     external_token: Some(TokenAuditEvent { token_id: external_token_id, .. }),
                 }) => {
-                    assert!(reason_errors.is_empty());
                     assert_eq!(token_id, format!("md5:{:x}", md5::compute("TOKEN")));
                     assert_eq!(external_token_id, "token-id");
 
@@ -208,11 +198,9 @@ fn assert_internal_token_message(response: anyhow::Result<ServiceResponse, Error
         assert_matches!(cause, Some(AuditedError{
             event: AuditEvent::Final(
                 FinalAuditEvent{
-                    internal_token: Some(TokenAuditEvent{
-                        reason_errors,
-                        ..
-                    }),
-                    policy_evaluation_result: PolicyEvaluationResult{ decision: Decision::Deny, .. },
+                    internal_token: Some(_),
+                    external_token: None,
+                    policy_evaluation_result: PolicyEvaluationResult{ decision: Decision::Deny, reason: Some(Reason{errors: reason_errors, ..}), .. },
                     ..
                 }
             ),
