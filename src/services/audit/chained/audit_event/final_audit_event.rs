@@ -14,6 +14,7 @@ impl FinalAuditEvent {
     pub fn get_properties(self) -> AuditEventProperties {
         let mut properties = AuditEventProperties::new(self.policy_evaluation_result.decision);
 
+        properties.is_final = true;
         properties.action = self.policy_evaluation_result.action.unwrap_or_default();
         properties.actor = self.policy_evaluation_result.actor.unwrap_or_default();
         properties.resource = self.policy_evaluation_result.resource.unwrap_or_default();
