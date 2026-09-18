@@ -4,6 +4,7 @@ use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::audit::audited_response::AuditedResponse;
 use crate::http::middleware::audit::begin_audit_chain::begin_audit_chain;
 use crate::http::middleware::audit::external_request::ExternalRequest;
+use crate::http::middleware::audit::finalize_on_fail;
 use crate::http::middleware::audit::internal_request::InternalRequest;
 use crate::http::middleware::extract_external_token::extract_external_token;
 use crate::http::middleware::extract_internal_token::extract_encrypted_token;
@@ -44,7 +45,8 @@ pub trait AuditScope {
 
 impl AuditScope for Scope {
     fn with_initial_audit_scope(self, writer: Arc<dyn AuditWriter>) -> impl HttpServiceFactory {
-        self.wrap(from_fn(extract_external_token::<ExternalRequest, AuditedError>))
+        self.wrap(from_fn(finalize_on_fail))
+            .wrap(from_fn(extract_external_token::<ExternalRequest, AuditedError>))
             .wrap(AuditRecorderFactory::<AuditedResponse<_>>::new(writer))
             .wrap(from_fn(begin_audit_chain::<ExternalRequest>))
     }
