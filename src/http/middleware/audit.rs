@@ -25,8 +25,7 @@ mod tests;
 pub async fn finalize_on_fail(
     request: ServiceRequest,
     next: Next<impl MessageBody + 'static>,
-) -> Result<ServiceResponse<BoxBody>, actix_web::Error>
-{
+) -> Result<ServiceResponse<BoxBody>, actix_web::Error> {
     let response = next.call(request.into()).await;
 
     match response {
