@@ -42,7 +42,7 @@ pub async fn finalize_on_fail(
                 let event = extensions_mut.get_mut::<AuditEvent>().unwrap();
 
                 let result = PolicyEvaluationResult::with_custom_errors(hashset! {
-                    format!("Error response with status: {}: {}", status, preview)
+                    format!("Boxer produced response with status status: {}: {}", status, preview)
                 });
                 event.finalize(result);
             }
