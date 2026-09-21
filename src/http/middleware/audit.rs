@@ -56,6 +56,6 @@ pub async fn finalize_on_fail(
             Ok(ServiceResponse::new(req, restored))
         }
         Ok(response) => Ok(response.map_into_boxed_body()),
-        Err(_error) => todo!(),
+        Err(error) => Err(error)
     }
 }

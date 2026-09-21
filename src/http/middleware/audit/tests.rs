@@ -41,6 +41,45 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
+#[actix_web::test]
+async fn test_finalize_on_fail_propagates_error() {
+    for status in [StatusCode::BAD_REQUEST, StatusCode::INTERNAL_SERVER_ERROR] {
+        let app = test::init_service(
+            App::new()
+                .wrap_fn(move |_req, _srv| {
+                    std::future::ready(Err::<actix_web::dev::ServiceResponse, _>(
+                        actix_web::error::InternalError::new("Sensitive error details", status).into(),
+                    ))
+                })
+                .wrap(actix_web::middleware::from_fn(super::finalize_on_fail)),
+        )
+        .await;
+        let response = test::try_call_service(&app, test::TestRequest::default().to_request()).await;
+        let error = response.expect_err("Middleware should propagate the error without retaining the request");
+        assert!(error.as_error::<actix_web::error::InternalError<&str>>().is_some());
+        assert_eq!(error.to_string(), "Sensitive error details");
+        let response = error.error_response();
+        assert_eq!(response.status(), status);
+        assert_eq!(
+            actix_web::body::to_bytes(response.into_body()).await.unwrap(),
+            "Sensitive error details"
+        );
+    }
+}
+
+#[actix_web::test]
+async fn test_finalize_on_fail_preserves_success_response() {
+    let app = test::init_service(
+        App::new()
+            .wrap(actix_web::middleware::from_fn(super::finalize_on_fail))
+            .route("/", web::get().to(|| async { HttpResponse::Ok().body("Success") })),
+    )
+    .await;
+    let response = test::call_service(&app, test::TestRequest::get().uri("/").to_request()).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(test::read_body(response).await, "Success");
+}
+
 /// Integration tests that validates the issuance of the token version 1.
 /// This test tests happy path and includes both external and internal HTTP pipelines.
 #[actix_web::test]
