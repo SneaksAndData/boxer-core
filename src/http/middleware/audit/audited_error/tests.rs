@@ -12,6 +12,24 @@ use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
 
 #[test]
+fn test_token_extraction_failure_request_context() {
+    for internal in [false, true] {
+        let request = TestRequest::get()
+            .insert_header(("X-Original-URL", "https://example.com/resource"))
+            .insert_header(("User-Agent", "test-agent"))
+            .to_srv_request();
+        request
+            .extensions_mut()
+            .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
+        let error = AuditedError::token_not_present(&request, internal);
+        assert_matches!(error.event, AuditEvent::Final(event) => {
+            assert_eq!(event.original_url.as_deref(), Some("https://example.com/resource"));
+            assert_eq!(event.user_agent.as_deref(), Some("test-agent"));
+        });
+    }
+}
+
+#[test]
 #[should_panic(expected = "Attempt to wrap an error without an audit event")]
 fn test_audited_error_wrap_panic() {
     // Arrange

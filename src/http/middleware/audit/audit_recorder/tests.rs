@@ -2,7 +2,9 @@ use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEve
 use crate::http::middleware::audit::audit_recorder::audit_recorder_factory::AuditRecorderFactory;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
 use crate::http::middleware::audit::audited_error::AuditedError;
+use crate::http::middleware::audit::audited_response::AuditedResponse;
 use crate::services::audit::chained::audit_event::AuditEvent;
+use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
 use actix_web::body::BoxBody;
 use actix_web::dev::ServiceResponse;
@@ -12,6 +14,38 @@ use anyhow::Result;
 use mockall::mock;
 use pretty_assertions::assert_matches;
 use std::sync::Arc;
+
+#[actix_web::test]
+async fn test_final_event_request_context() {
+    for fail in [false, true] {
+        let mut audit = MockAuditWriter::new();
+        audit.expect_write().once().returning(|event| {
+            let AuditEvent::Final(event) = event else {
+                panic!("Expected a final audit event");
+            };
+            assert_eq!(event.original_url.as_deref(), Some("https://example.com/resource"));
+            assert_eq!(event.user_agent.as_deref(), Some("test-agent"));
+        });
+        let chain = App::new()
+            .wrap_fn(move |req, _srv| {
+                let event = AuditEvent::Final(FinalAuditEvent::for_test());
+                let response = if fail {
+                    Err(Error::from(AuditedError::new(event, "Failure")))
+                } else {
+                    req.extensions_mut().insert(event);
+                    Ok(req.into_response(HttpResponse::Ok().finish()))
+                };
+                std::future::ready(response)
+            })
+            .wrap(AuditRecorderFactory::<AuditedResponse>::new(Arc::new(audit)));
+        let service = test::init_service(chain).await;
+        let request = test::TestRequest::get()
+            .insert_header(("X-Original-URL", "https://example.com/resource"))
+            .insert_header(("User-Agent", "test-agent"))
+            .to_request();
+        assert_eq!(test::try_call_service(&service, request).await.is_err(), fail);
+    }
+}
 
 #[actix_web::test]
 async fn test_audit_success() {

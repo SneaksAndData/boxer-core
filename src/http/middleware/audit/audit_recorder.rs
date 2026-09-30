@@ -5,6 +5,7 @@ pub mod audit_writer;
 mod tests;
 
 use super::audited_error::AuditedError;
+use super::request_context::RequestAuditContext;
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
 use crate::services::audit::chained::audit_event::AuditEvent;
@@ -49,6 +50,7 @@ where
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let next = Arc::clone(&self.next);
         let audit_writer = Arc::clone(&self.audit_service);
+        let context = RequestAuditContext::from_request(&req);
 
         let future = async move {
             let result = next.call(req.into()).await;
@@ -56,14 +58,23 @@ where
             match result {
                 Ok(response) => {
                     let audited: AES = AES::from(response);
-                    let event = audited.audit_event();
+                    let mut event = audited.audit_event();
+                    if let AuditEvent::Final(event) = &mut event {
+                        context.apply(event);
+                    }
                     audit_writer.write(event);
                     Ok(audited.into())
                 }
 
                 Err(error) => {
                     match error.as_error::<AuditedError>() {
-                        Some(audited_error) => audit_writer.write(audited_error.event.clone()),
+                        Some(audited_error) => {
+                            let mut event = audited_error.event.clone();
+                            if let AuditEvent::Final(event) = &mut event {
+                                context.apply(event);
+                            }
+                            audit_writer.write(event);
+                        }
                         None => panic!(
                             "Error without audit should not reach audit recorder middleware: {:?}",
                             error

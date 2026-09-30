@@ -12,6 +12,7 @@ pub mod audited_response;
 pub mod begin_audit_chain;
 pub mod external_request;
 pub mod internal_request;
+mod request_context;
 
 pub mod audit_scope;
 pub mod extract_external_token_event;

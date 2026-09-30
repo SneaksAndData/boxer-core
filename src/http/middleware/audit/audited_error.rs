@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests;
 
+use crate::http::middleware::audit::request_context::RequestAuditContext;
 use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
@@ -115,13 +116,17 @@ impl ExternalTokenError for AuditedError {
             ))
             .clone();
         match event {
-            AuditEvent::Intermediate(data) if data.is_empty() => AuditedError {
-                event: match internal {
-                    true => AuditEvent::Final(FinalAuditEvent::internal_token_extraction_failed(cause.to_string())),
-                    false => AuditEvent::Final(FinalAuditEvent::external_token_extraction_failed(cause.to_string())),
-                },
-                cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
-            },
+            AuditEvent::Intermediate(data) if data.is_empty() => {
+                let mut event = match internal {
+                    true => FinalAuditEvent::internal_token_extraction_failed(cause.to_string()),
+                    false => FinalAuditEvent::external_token_extraction_failed(cause.to_string()),
+                };
+                RequestAuditContext::from_request(request).apply(&mut event);
+                AuditedError {
+                    event: AuditEvent::Final(event),
+                    cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
+                }
+            }
             AuditEvent::Intermediate(data) => {
                 panic!("Non-empty audit event when token is not present: {:?}", data)
             }
