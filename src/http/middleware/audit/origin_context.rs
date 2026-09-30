@@ -6,13 +6,13 @@ use crate::services::validation_service::request_context::extract_original_url;
 use actix_web::dev::ServiceRequest;
 use actix_web::http::header::USER_AGENT;
 
-pub(super) struct RequestAuditContext {
+pub struct OriginContext {
     original_url: Option<String>,
     user_agent: Option<String>,
 }
 
-impl RequestAuditContext {
-    pub(super) fn from_request(request: &ServiceRequest) -> Self {
+impl OriginContext {
+    pub fn from_request(request: &ServiceRequest) -> Self {
         let original_url = match extract_original_url(request.request()) {
             Ok(url) => Some(preview(&url)),
             Err(error) => {
@@ -37,7 +37,7 @@ impl RequestAuditContext {
         }
     }
 
-    pub(super) fn apply(self, event: &mut FinalAuditEvent) {
+    pub fn apply(self, event: &mut FinalAuditEvent) {
         event.original_url = self.original_url;
         event.user_agent = self.user_agent;
     }

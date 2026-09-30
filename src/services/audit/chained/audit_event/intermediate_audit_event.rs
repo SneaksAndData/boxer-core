@@ -32,6 +32,8 @@ impl IntermediateAuditEvent {
         FinalAuditEvent {
             external_token: self.external_token.take(),
             internal_token: self.internal_token.take(),
+            original_url: None,
+            user_agent: None,
             policy_evaluation_result: result,
         }
     }
@@ -47,6 +49,8 @@ impl IntermediateAuditEvent {
         FinalAuditEvent {
             external_token: self.external_token,
             internal_token: self.internal_token,
+            original_url: None,
+            user_agent: None,
             policy_evaluation_result: PolicyEvaluationResult::with_custom_errors(hashset! {
                 cause
             }),

@@ -1,4 +1,4 @@
-use super::{RequestAuditContext, preview};
+use super::{OriginContext, preview};
 use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use actix_web::test::TestRequest;
 
@@ -21,7 +21,7 @@ fn test_nginx_context_and_properties() {
         .insert_header(("User-Agent", user_agent.as_str()))
         .to_srv_request();
     let mut event = FinalAuditEvent::for_test();
-    RequestAuditContext::from_request(&request).apply(&mut event);
+    OriginContext::from_request(&request).apply(&mut event);
     assert_eq!(event.original_url.as_deref(), Some(preview(&url).as_str()));
     assert_eq!(event.user_agent.as_deref(), Some(preview(&user_agent).as_str()));
     let properties = event.get_properties();
@@ -37,7 +37,7 @@ fn test_traefik_context_without_user_agent() {
         .insert_header(("X-Forwarded-Uri", "/path?query=value"))
         .to_srv_request();
     let mut event = FinalAuditEvent::for_test();
-    RequestAuditContext::from_request(&request).apply(&mut event);
+    OriginContext::from_request(&request).apply(&mut event);
     assert_eq!(
         event.original_url.as_deref(),
         Some("https://example.com/path?query=value")
@@ -49,7 +49,7 @@ fn test_traefik_context_without_user_agent() {
 fn test_missing_context() {
     let request = TestRequest::get().uri("/not-the-original-url").to_srv_request();
     let mut event = FinalAuditEvent::for_test();
-    RequestAuditContext::from_request(&request).apply(&mut event);
+    OriginContext::from_request(&request).apply(&mut event);
     assert_eq!(event.original_url, None);
     assert_eq!(event.user_agent, None);
 }
@@ -61,7 +61,7 @@ fn test_invalid_headers() {
         .insert_header(("User-Agent", vec![0xff]))
         .to_srv_request();
     let mut event = FinalAuditEvent::for_test();
-    RequestAuditContext::from_request(&request).apply(&mut event);
+    OriginContext::from_request(&request).apply(&mut event);
     assert_eq!(event.original_url, None);
     assert_eq!(event.user_agent, None);
 }

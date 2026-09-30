@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests;
 
-use crate::http::middleware::audit::request_context::RequestAuditContext;
+use crate::http::middleware::audit::enrich_from_origin::OriginContext;
+use crate::http::middleware::audit::enrich_from_origin::enrich_from_origin::EnrichFromOrigin;
 use crate::http::middleware::extract_external_token::external_token_error::ExternalTokenError;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
@@ -11,13 +12,30 @@ use actix_web::http::StatusCode;
 use actix_web::{HttpMessage, ResponseError};
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
+use std::rc::Rc;
 
 /// [`AuditedError`] is a wrapper for any error that implements `ResponseError` and carries
 /// an associated [`AuditEvent`] that can be recorded by the audit middleware.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct AuditedError {
     pub event: AuditEvent,
-    cause: Box<dyn ResponseError>,
+    cause: Rc<dyn ResponseError>,
+}
+
+impl EnrichFromOrigin<actix_web::Error> for AuditedError {
+    fn enrich_from_origin(error: actix_web::Error, context: OriginContext) -> actix_web::Error {
+        if let Some(audited_error) = error.as_error::<Self>() {
+            if matches!(audited_error.event, AuditEvent::Final(_)) {
+                // Actix exposes errors by shared reference; preserve the cause while updating the event.
+                let mut enriched = audited_error.clone();
+                if let AuditEvent::Final(event) = &mut enriched.event {
+                    context.apply(event);
+                }
+                return enriched.into();
+            }
+        }
+        error
+    }
 }
 
 impl AuditedError {
@@ -29,14 +47,14 @@ impl AuditedError {
     {
         AuditedError {
             event,
-            cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
+            cause: Rc::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
         }
     }
 
     pub(crate) fn internal_token_error(event: AuditEvent, cause: impl Error + 'static) -> AuditedError {
         AuditedError {
             event: event.finalize_internal_token_error(cause.to_string()),
-            cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
+            cause: Rc::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
         }
     }
 
@@ -51,7 +69,7 @@ impl AuditedError {
             .clone();
         AuditedError {
             event,
-            cause: Box::new(cause),
+            cause: Rc::new(cause),
         }
     }
 
@@ -75,7 +93,7 @@ impl AuditedError {
             }
             AuditEvent::Intermediate(data) => AuditedError {
                 event: AuditEvent::Intermediate(data),
-                cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
+                cause: Rc::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
             },
         }
     }
@@ -117,14 +135,13 @@ impl ExternalTokenError for AuditedError {
             .clone();
         match event {
             AuditEvent::Intermediate(data) if data.is_empty() => {
-                let mut event = match internal {
+                let event = match internal {
                     true => FinalAuditEvent::internal_token_extraction_failed(cause.to_string()),
                     false => FinalAuditEvent::external_token_extraction_failed(cause.to_string()),
                 };
-                RequestAuditContext::from_request(request).apply(&mut event);
                 AuditedError {
                     event: AuditEvent::Final(event),
-                    cause: Box::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
+                    cause: Rc::new(InternalError::new(cause, StatusCode::INTERNAL_SERVER_ERROR)),
                 }
             }
             AuditEvent::Intermediate(data) => {

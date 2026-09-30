@@ -3,6 +3,7 @@ use crate::http::middleware::audit::audit_recorder::audit_recorder_factory::Audi
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
 use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::audit::audited_response::AuditedResponse;
+use crate::http::middleware::audit::enrich_from_origin::enrich_from_origin;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
@@ -37,6 +38,9 @@ async fn test_final_event_request_context() {
                 };
                 std::future::ready(response)
             })
+            .wrap(actix_web::middleware::from_fn(
+                enrich_from_origin::<AuditedResponse<_>, AuditedError, _>,
+            ))
             .wrap(AuditRecorderFactory::<AuditedResponse>::new(Arc::new(audit)));
         let service = test::init_service(chain).await;
         let request = test::TestRequest::get()

@@ -3,6 +3,7 @@ use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
 use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::audit::audited_response::AuditedResponse;
 use crate::http::middleware::audit::begin_audit_chain::begin_audit_chain;
+use crate::http::middleware::audit::enrich_from_origin::enrich_from_origin;
 use crate::http::middleware::audit::external_request::ExternalRequest;
 use crate::http::middleware::audit::finalize_on_fail;
 use crate::http::middleware::audit::internal_request::InternalRequest;
@@ -26,6 +27,7 @@ pub trait AuditScope {
     /// Middleware order is significant:
     /// - starts the audit chain (`begin_audit_chain`),
     /// - extracts and validates the external token (`extract_external_token`),
+    /// - enriches final events on the response path (`enrich_from_origin`),
     /// - records the terminal audit event (`AuditRecorderFactory`).
     fn with_initial_audit_scope(self, writer: Arc<dyn AuditWriter>) -> impl HttpServiceFactory;
 
@@ -37,6 +39,7 @@ pub trait AuditScope {
     /// Middleware order is significant:
     /// - extracts the encrypted internal token (`extract_encrypted_token`),
     /// - decrypts and enriches request context (`TokenDecryptorMiddlewareFactory`),
+    /// - enriches final events on the response path (`enrich_from_origin`),
     /// - records the terminal audit event (`AuditRecorderFactory`).
     fn continue_audit_scope<D>(self, writer: Arc<dyn AuditWriter>, decryptor: Arc<D>) -> impl HttpServiceFactory
     where
@@ -47,6 +50,7 @@ impl AuditScope for Scope {
     fn with_initial_audit_scope(self, writer: Arc<dyn AuditWriter>) -> impl HttpServiceFactory {
         self.wrap(from_fn(finalize_on_fail))
             .wrap(from_fn(extract_external_token::<ExternalRequest, AuditedError>))
+            .wrap(from_fn(enrich_from_origin::<AuditedResponse<_>, AuditedError, _>))
             .wrap(AuditRecorderFactory::<AuditedResponse<_>>::new(writer))
             .wrap(from_fn(begin_audit_chain::<ExternalRequest>))
     }
@@ -57,6 +61,7 @@ impl AuditScope for Scope {
     {
         self.wrap(TokenDecryptorMiddlewareFactory::<D, InternalRequest>::new(decryptor))
             .wrap(from_fn(extract_encrypted_token::<InternalRequest, AuditedError>))
+            .wrap(from_fn(enrich_from_origin::<AuditedResponse<_>, AuditedError, _>))
             .wrap(AuditRecorderFactory::<AuditedResponse<_>>::new(writer))
             .wrap(from_fn(begin_audit_chain::<InternalRequest>))
     }
