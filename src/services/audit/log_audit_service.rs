@@ -134,7 +134,9 @@ impl AuditWriter for LogAuditService {
             reason_policies:serde = payload.reason.policies,
             reason_errors:serde = payload.reason.errors,
             external_token_id = payload.external_token_id,
-            internal_token_id = payload.internal_token_id;
+            internal_token_id = payload.internal_token_id,
+            original_url = payload.original_url.as_deref(),
+            user_agent = payload.user_agent.as_deref();
 
             // The log message
             "Boxer audit event recorded with decision: {:?}", payload.decision()

@@ -7,6 +7,10 @@ use maplit::hashset;
 pub struct FinalAuditEvent {
     pub external_token: Option<TokenAuditEvent>,
     pub internal_token: Option<TokenAuditEvent>,
+    /// The first 100 characters of the original URL, when available.
+    pub original_url: Option<String>,
+    /// The first 100 characters of the request's User-Agent, when available.
+    pub user_agent: Option<String>,
     pub policy_evaluation_result: PolicyEvaluationResult,
 }
 
@@ -26,6 +30,8 @@ impl FinalAuditEvent {
         });
         properties.external_token_id = self.external_token.map(|token| token.token_id).unwrap_or_default();
         properties.internal_token_id = self.internal_token.map(|token| token.token_id).unwrap_or_default();
+        properties.original_url = self.original_url;
+        properties.user_agent = self.user_agent;
 
         properties
     }
@@ -38,6 +44,8 @@ impl FinalAuditEvent {
                 token_id: String::default(),
             }),
             internal_token: None,
+            original_url: None,
+            user_agent: None,
             policy_evaluation_result: PolicyEvaluationResult::with_custom_errors(hashset! {
                 reason
             }),
@@ -50,6 +58,8 @@ impl FinalAuditEvent {
             internal_token: Some(TokenAuditEvent {
                 token_id: String::default(),
             }),
+            original_url: None,
+            user_agent: None,
             policy_evaluation_result: PolicyEvaluationResult::with_custom_errors(hashset! {
                 reason
             }),
@@ -64,6 +74,8 @@ impl FinalAuditEvent {
                 token_id: String::default(),
             }),
             internal_token: None,
+            original_url: None,
+            user_agent: None,
             policy_evaluation_result: PolicyEvaluationResult::with_custom_errors(hashset! {}),
         }
     }

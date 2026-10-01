@@ -259,7 +259,8 @@ impl MockAuditWriter {
                             resource: None,
                             decision: Decision::Deny,
                             reason: Some(Reason{ policies, errors })
-                        }
+                        },
+                        ..
                     }) if policies.is_empty() && !errors.is_empty()
                 )
             })
@@ -281,7 +282,8 @@ impl MockAuditWriter {
                             resource: Some(resource),
                             reason: Some(reason),
                             decision: Decision::Allow,
-                        }
+                        },
+                        ..
                     }) if action == r#"Action::"post""#
                         && actor == r#"User::"alice""#
                         && resource == r#"Http::"example.com""#
@@ -310,7 +312,8 @@ impl MockAuditWriter {
                                 errors: reason_errors,
                                 ..
                             })
-                        }
+                        },
+                        ..
                     }) if reason_errors.contains(&message)
                 )
             })

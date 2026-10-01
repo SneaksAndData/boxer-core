@@ -15,6 +15,10 @@ pub struct AuditEventProperties {
 
     pub internal_token_id: String,
 
+    pub original_url: Option<String>,
+
+    pub user_agent: Option<String>,
+
     decision: Option<Decision>,
 }
 
@@ -47,6 +51,8 @@ impl Default for AuditEventProperties {
             decision: None,
             external_token_id: Default::default(),
             internal_token_id: Default::default(),
+            original_url: None,
+            user_agent: None,
         }
     }
 }

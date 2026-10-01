@@ -1,4 +1,6 @@
 use crate::http::middleware::audit::audit_recorder::audit_event_source::AuditEventSource;
+use crate::http::middleware::audit::enrich_from_origin::OriginContext;
+use crate::http::middleware::audit::enrich_from_origin::enrich_from_origin::EnrichFromOrigin;
 use crate::services::audit::chained::audit_event::AuditEvent;
 use actix_web::HttpMessage;
 use actix_web::body::BoxBody;
@@ -7,6 +9,15 @@ use actix_web::dev::ServiceResponse;
 /// [`AuditedResponse`] contains an abstraction layer for `ServiceResponse` that abstracts the handling
 /// of the audit metadata and the audit metadata validation.
 pub struct AuditedResponse<BodyType = BoxBody>(ServiceResponse<BodyType>);
+
+impl<BodyType> EnrichFromOrigin<ServiceResponse<BodyType>> for AuditedResponse<BodyType> {
+    fn enrich_from_origin(response: ServiceResponse<BodyType>, context: OriginContext) -> ServiceResponse<BodyType> {
+        if let Some(AuditEvent::Final(event)) = response.request().extensions_mut().get_mut::<AuditEvent>() {
+            context.apply(event);
+        }
+        response
+    }
+}
 
 impl<BodyType> AuditEventSource<AuditEvent> for AuditedResponse<BodyType> {
     fn audit_event(&self) -> AuditEvent {
