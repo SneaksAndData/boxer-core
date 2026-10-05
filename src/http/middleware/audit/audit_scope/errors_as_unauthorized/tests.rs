@@ -42,7 +42,12 @@ async fn changes_error_status_and_removes_body() {
         assert!(!response.headers().contains_key(header::CONTENT_LENGTH));
         assert!(!response.headers().contains_key(header::TRANSFER_ENCODING));
         assert!(!response.headers().contains_key(header::CONTENT_ENCODING));
-        assert!(actix_web::body::to_bytes(response.into_body()).await.unwrap().is_empty());
+        assert!(
+            actix_web::body::to_bytes(response.into_body())
+                .await
+                .unwrap()
+                .is_empty()
+        );
     }
 }
 
