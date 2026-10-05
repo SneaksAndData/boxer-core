@@ -44,7 +44,7 @@ pub trait AuditScope {
     /// an internal token must be extracted/decrypted before recording the final audit event.
     /// Handler responses other than 200 and 401 finalize any unfinished audit event.
     /// Propagated service errors are wrapped with HTTP status 401 after audit recording;
-    /// their response bodies and headers are preserved. Successful service results are unchanged.
+    /// their response bodies and body framing/encoding headers are removed. Successful service results are unchanged.
     ///
     /// Middleware order is significant:
     /// - extracts the encrypted internal token (`extract_encrypted_token`),

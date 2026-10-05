@@ -1,12 +1,12 @@
 use super::errors_as_unauthorized;
 use actix_web::dev::ServiceResponse;
 use actix_web::error::InternalError;
-use actix_web::http::StatusCode;
+use actix_web::http::{StatusCode, header};
 use actix_web::middleware::from_fn;
 use actix_web::{App, HttpResponse, test, web};
 
 #[actix_web::test]
-async fn changes_error_status_and_preserves_body_and_headers() {
+async fn changes_error_status_and_removes_body() {
     for status in [
         StatusCode::BAD_REQUEST,
         StatusCode::UNAUTHORIZED,
@@ -21,6 +21,8 @@ async fn changes_error_status_and_preserves_body_and_headers() {
                     .wrap_fn(move |_req, _srv| {
                         let response = HttpResponse::build(status)
                             .insert_header(("x-error", "preserved"))
+                            .insert_header((header::CONTENT_LENGTH, "13"))
+                            .insert_header((header::CONTENT_ENCODING, "identity"))
                             .body("Error details");
                         std::future::ready(Err::<ServiceResponse, actix_web::Error>(
                             InternalError::from_response("cause", response).into(),
@@ -37,10 +39,10 @@ async fn changes_error_status_and_preserves_body_and_headers() {
         let response = error.error_response();
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         assert_eq!(response.headers().get("x-error").unwrap(), "preserved");
-        assert_eq!(
-            actix_web::body::to_bytes(response.into_body()).await.unwrap(),
-            "Error details"
-        );
+        assert!(!response.headers().contains_key(header::CONTENT_LENGTH));
+        assert!(!response.headers().contains_key(header::TRANSFER_ENCODING));
+        assert!(!response.headers().contains_key(header::CONTENT_ENCODING));
+        assert!(actix_web::body::to_bytes(response.into_body()).await.unwrap().is_empty());
     }
 }
 

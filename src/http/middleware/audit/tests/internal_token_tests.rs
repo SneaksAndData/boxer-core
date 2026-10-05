@@ -193,7 +193,7 @@ fn assert_internal_token_message(response: anyhow::Result<ServiceResponse, Error
     let response = error.error_response();
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     let body = response.into_body().try_into_bytes().unwrap();
-    assert_eq!(body, message);
+    assert!(body.is_empty(), "Token error details must not be exposed: {message}");
 }
 
 mock! {
