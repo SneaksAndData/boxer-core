@@ -5,23 +5,19 @@ use crate::contracts::internal_token::v2::{
     AUDIT_EVENT, PRINCIPAL_KEY, SCHEMA_ID_KEY, SCHEMA_KEY, VALIDATOR_SCHEMA_ID_KEY,
 };
 use crate::http::middleware::audit::audit_scope::AuditScope;
-use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::audit::tests::MockAuditWriter;
 use crate::http::middleware::token_decryptor_middleware::decryptor::Decryptor;
 use crate::services::audit::chained::audit_event::AuditEvent;
-use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
-use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use crate::services::audit::events::authorization_audit_event::Reason;
 use crate::services::token_decryption_service::TokenDecryptionService;
 use crate::services::token_decryption_service::encryption_keys::EncryptionKeys;
 use crate::services::token_decryption_service::token_settings::TokenValidationSettings;
+use actix_web::body::MessageBody;
 use actix_web::dev::ServiceResponse;
+use actix_web::http::StatusCode;
 use actix_web::web::scope;
 use actix_web::{App, Error, HttpMessage, HttpRequest, HttpResponse, test, web};
-use assert_matches::assert_matches;
-use cedar_policy::Decision;
 use mockall::mock;
 use serde_json::json;
 use std::collections::HashMap;
@@ -192,23 +188,12 @@ async fn test_successful_token() {
 }
 
 fn assert_internal_token_message(response: anyhow::Result<ServiceResponse, Error>, message: &str) {
-    assert_matches::assert_matches!(response, Err(error) => {
-        let cause = error.as_error::<AuditedError>();
-
-        assert_matches!(cause, Some(AuditedError{
-            event: AuditEvent::Final(
-                FinalAuditEvent{
-                    internal_token: Some(_),
-                    external_token: None,
-                    policy_evaluation_result: PolicyEvaluationResult{ decision: Decision::Deny, reason: Some(Reason{errors: reason_errors, ..}), .. },
-                    ..
-                }
-            ),
-            ..
-        }) => {
-            assert!(reason_errors.contains(message), "{:?}", reason_errors)
-        })
-    });
+    let error = response.expect_err("Token failures must remain service errors");
+    assert_eq!(error.as_response_error().status_code(), StatusCode::UNAUTHORIZED);
+    let response = error.error_response();
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    let body = response.into_body().try_into_bytes().unwrap();
+    assert!(body.is_empty(), "Token error details must not be exposed: {message}");
 }
 
 mock! {

@@ -5,6 +5,7 @@ use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::middleware::Next;
 use actix_web::{HttpMessage, HttpResponse};
 use maplit::hashset;
+use status_filter::StatusFilter;
 
 pub mod audit_recorder;
 pub mod audited_error;
@@ -14,24 +15,26 @@ pub mod enrich_from_origin;
 pub mod external_request;
 pub mod internal_request;
 pub mod origin_context;
+pub mod status_filter;
 
 pub mod audit_scope;
 pub mod extract_external_token_event;
 #[cfg(test)]
 mod tests;
 
-/// Extracts the external token from the incoming request and inserts the extracted token to
-/// request extensions for further processing. If the token is not present or extraction fails,
-/// returns an error response. Inserts a token ID to the AuditEvent for the incoming request if
-/// the token is successfully extracted.
-pub async fn finalize_on_fail(
+/// Finalizes the audit event when [`StatusFilter::should_finalize`] returns `true`.
+///
+/// Register with `from_fn(finalize_on_status::<YourStatusFilter>)`.
+/// Responses that are not skipped require an [`AuditEvent`] in request extensions.
+/// Service errors are propagated unchanged.
+pub async fn finalize_on_status<F: StatusFilter>(
     request: ServiceRequest,
     next: Next<impl MessageBody + 'static>,
 ) -> Result<ServiceResponse<BoxBody>, actix_web::Error> {
     let response = next.call(request.into()).await;
 
     match response {
-        Ok(response) if !response.status().is_success() => {
+        Ok(response) if F::should_finalize(response.status()) => {
             let (req, res) = response.into_parts();
 
             let headers = res.headers().clone();
@@ -46,7 +49,7 @@ pub async fn finalize_on_fail(
                 let result = PolicyEvaluationResult::with_custom_errors(hashset! {
                     format!("Boxer produced response with status status: {}: {}", status, preview)
                 });
-                event.finalize(result);
+                event.try_finalize(result);
             }
 
             let mut builder = HttpResponse::build(status);

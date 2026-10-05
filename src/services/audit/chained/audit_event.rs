@@ -48,6 +48,16 @@ impl AuditEvent {
         }
     }
 
+    pub fn try_finalize(&mut self, result: PolicyEvaluationResult) -> () {
+        match self {
+            AuditEvent::Intermediate(event) => {
+                let final_event = event.finalize(result);
+                *self = AuditEvent::Final(final_event.clone());
+            }
+            AuditEvent::Final(_) => (),
+        }
+    }
+
     pub fn set_external_token(&mut self, external_token: TokenAuditEvent) {
         match self {
             AuditEvent::Intermediate(e) => {
