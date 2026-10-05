@@ -46,7 +46,7 @@ pub async fn finalize_on_fail(
                 let result = PolicyEvaluationResult::with_custom_errors(hashset! {
                     format!("Boxer produced response with status status: {}: {}", status, preview)
                 });
-                event.finalize(result);
+                event.try_finalize(result);
             }
 
             let mut builder = HttpResponse::build(status);
