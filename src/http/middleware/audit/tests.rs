@@ -4,6 +4,8 @@ mod internal_token_tests;
 use crate::contracts::internal_token::v2::boxer_claims::BoxerClaims;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
 use crate::http::middleware::audit::audit_scope::AuditScope;
+use crate::http::middleware::audit::status_filter::finalize_on_fail::finalize_on_fail;
+use crate::http::middleware::audit::status_filter::skip_unmatched_statuses::{AllowedStatuses, SkipUnmatched};
 use crate::services::audit::chained::audit_event::AuditEvent;
 use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
@@ -41,6 +43,140 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
+struct SkipAcceptedAndNotFound;
+
+impl super::status_filter::StatusFilter for SkipAcceptedAndNotFound {
+    fn should_finalize(status: StatusCode) -> bool {
+        !matches!(status, StatusCode::ACCEPTED | StatusCode::NOT_FOUND)
+    }
+}
+
+#[actix_web::test]
+async fn test_finalize_on_status_with_allowed_list() {
+    struct Allowed;
+
+    impl AllowedStatuses for Allowed {
+        const STATUSES: &'static [StatusCode] = &[StatusCode::UNAUTHORIZED, StatusCode::OK];
+    }
+
+    for (status, finalized) in [
+        (StatusCode::OK, false),
+        (StatusCode::UNAUTHORIZED, false),
+        (StatusCode::CREATED, true),
+        (StatusCode::FOUND, true),
+        (StatusCode::FORBIDDEN, true),
+        (StatusCode::INTERNAL_SERVER_ERROR, true),
+    ] {
+        let app = test::init_service(
+            App::new()
+                .wrap(actix_web::middleware::from_fn(
+                    super::finalize_on_status::<SkipUnmatched<Allowed>>,
+                ))
+                .route(
+                    "/",
+                    web::get().to(move |request: HttpRequest| async move {
+                        request
+                            .extensions_mut()
+                            .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
+                        HttpResponse::build(status).body("Response details")
+                    }),
+                ),
+        )
+        .await;
+        let response = test::call_service(&app, test::TestRequest::get().uri("/").to_request()).await;
+        assert_eq!(response.status(), status);
+        assert_eq!(
+            matches!(
+                response.request().extensions().get::<AuditEvent>().unwrap(),
+                AuditEvent::Final(_)
+            ),
+            finalized,
+            "Unexpected audit state for {status}"
+        );
+        assert_eq!(test::read_body(response).await, "Response details");
+    }
+}
+
+#[actix_web::test]
+async fn test_finalize_on_status_uses_custom_filter() {
+    for (status, skipped) in [
+        (StatusCode::OK, false),
+        (StatusCode::ACCEPTED, true),
+        (StatusCode::FOUND, false),
+        (StatusCode::BAD_REQUEST, false),
+        (StatusCode::NOT_FOUND, true),
+        (StatusCode::INTERNAL_SERVER_ERROR, false),
+    ] {
+        let app = test::init_service(
+            App::new()
+                .wrap(actix_web::middleware::from_fn(
+                    super::finalize_on_status::<SkipAcceptedAndNotFound>,
+                ))
+                .route(
+                    "/",
+                    web::get().to(move |request: HttpRequest| async move {
+                        request
+                            .extensions_mut()
+                            .insert(AuditEvent::Intermediate(IntermediateAuditEvent::empty()));
+                        HttpResponse::build(status)
+                            .insert_header(("x-audit-test", "preserved"))
+                            .body("Response details")
+                    }),
+                ),
+        )
+        .await;
+        let response = test::call_service(&app, test::TestRequest::get().uri("/").to_request()).await;
+        assert_eq!(response.status(), status);
+        assert_eq!(response.headers().get("x-audit-test").unwrap(), "preserved");
+        {
+            let extensions = response.request().extensions();
+            let event = extensions.get::<AuditEvent>().unwrap();
+            if skipped {
+                assert!(matches!(event, AuditEvent::Intermediate(_)));
+            } else {
+                let AuditEvent::Final(event) = event else {
+                    panic!("Expected a final audit event for {status}");
+                };
+                assert_eq!(event.policy_evaluation_result.decision, Decision::Deny);
+                assert!(
+                    event
+                        .policy_evaluation_result
+                        .reason
+                        .as_ref()
+                        .unwrap()
+                        .errors
+                        .contains(&format!(
+                            "Boxer produced response with status status: {}: Response details",
+                            status
+                        ))
+                );
+            }
+        }
+        assert_eq!(test::read_body(response).await, "Response details");
+    }
+}
+
+#[actix_web::test]
+async fn test_finalize_on_status_propagates_error_for_skipped_status() {
+    let app = test::init_service(
+        App::new()
+            .wrap_fn(|_req, _srv| {
+                std::future::ready(Err::<actix_web::dev::ServiceResponse, _>(
+                    actix_web::error::ErrorNotFound("Missing resource"),
+                ))
+            })
+            .wrap(actix_web::middleware::from_fn(
+                super::finalize_on_status::<SkipAcceptedAndNotFound>,
+            )),
+    )
+    .await;
+    let error = test::try_call_service(&app, test::TestRequest::default().to_request())
+        .await
+        .expect_err("Service errors should propagate even when their status is skipped");
+    assert_eq!(error.as_response_error().status_code(), StatusCode::NOT_FOUND);
+    assert_eq!(error.to_string(), "Missing resource");
+}
+
 #[actix_web::test]
 async fn test_finalize_on_fail_propagates_error() {
     for status in [StatusCode::BAD_REQUEST, StatusCode::INTERNAL_SERVER_ERROR] {
@@ -51,7 +187,7 @@ async fn test_finalize_on_fail_propagates_error() {
                         actix_web::error::InternalError::new("Sensitive error details", status).into(),
                     ))
                 })
-                .wrap(actix_web::middleware::from_fn(super::finalize_on_fail)),
+                .wrap(actix_web::middleware::from_fn(finalize_on_fail)),
         )
         .await;
         let response = test::try_call_service(&app, test::TestRequest::default().to_request()).await;
@@ -71,7 +207,7 @@ async fn test_finalize_on_fail_propagates_error() {
 async fn test_finalize_on_fail_preserves_success_response() {
     let app = test::init_service(
         App::new()
-            .wrap(actix_web::middleware::from_fn(super::finalize_on_fail))
+            .wrap(actix_web::middleware::from_fn(finalize_on_fail))
             .route("/", web::get().to(|| async { HttpResponse::Ok().body("Success") })),
     )
     .await;
