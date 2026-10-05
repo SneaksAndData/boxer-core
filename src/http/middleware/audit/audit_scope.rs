@@ -1,5 +1,6 @@
 use crate::http::middleware::audit::audit_recorder::audit_recorder_factory::AuditRecorderFactory;
 use crate::http::middleware::audit::audit_recorder::audit_writer::AuditWriter;
+use crate::http::middleware::audit::audit_scope::errors_as_unauthorized::errors_as_unauthorized;
 use crate::http::middleware::audit::audit_scope::ok_or_unauthorized_statuses::OkOrUnauthorized;
 use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::audit::audited_response::AuditedResponse;
@@ -20,6 +21,7 @@ use actix_web::middleware::from_fn;
 use std::sync::Arc;
 
 mod ok_or_unauthorized_statuses;
+mod errors_as_unauthorized;
 
 /// Extension trait for attaching the complete audit middleware chain to an Actix [`Scope`].
 ///
@@ -41,6 +43,8 @@ pub trait AuditScope {
     /// Use this on internal routes where the external token is already present and
     /// an internal token must be extracted/decrypted before recording the final audit event.
     /// Handler responses other than 200 and 401 finalize any unfinished audit event.
+    /// Propagated service errors are wrapped with HTTP status 401 after audit recording;
+    /// their response bodies and headers are preserved. Successful service results are unchanged.
     ///
     /// Middleware order is significant:
     /// - extracts the encrypted internal token (`extract_encrypted_token`),
@@ -65,11 +69,12 @@ impl AuditScope for Scope {
     where
         D: Decryptor + 'static,
     {
-        self.wrap(from_fn(finalize_on_status::<SkipUnmatched<OkOrUnauthorized>>))
-            .wrap(TokenDecryptorMiddlewareFactory::<D, InternalRequest>::new(decryptor))
+        self.wrap(TokenDecryptorMiddlewareFactory::<D, InternalRequest>::new(decryptor))
             .wrap(from_fn(extract_encrypted_token::<InternalRequest, AuditedError>))
             .wrap(from_fn(enrich_from_origin::<AuditedResponse<_>, AuditedError, _>))
             .wrap(AuditRecorderFactory::<AuditedResponse<_>>::new(writer))
             .wrap(from_fn(begin_audit_chain::<InternalRequest>))
+            .wrap(from_fn(finalize_on_status::<SkipUnmatched<OkOrUnauthorized>>))
+            .wrap(from_fn(errors_as_unauthorized))
     }
 }
