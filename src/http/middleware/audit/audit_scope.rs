@@ -20,8 +20,8 @@ use actix_web::dev::HttpServiceFactory;
 use actix_web::middleware::from_fn;
 use std::sync::Arc;
 
-mod ok_or_unauthorized_statuses;
 mod errors_as_unauthorized;
+mod ok_or_unauthorized_statuses;
 
 /// Extension trait for attaching the complete audit middleware chain to an Actix [`Scope`].
 ///

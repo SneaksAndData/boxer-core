@@ -55,7 +55,10 @@ async fn leaves_all_ok_responses_unchanged() {
         let app = test::init_service(
             App::new().service(
                 web::scope("/protected")
-                    .route("", web::to(move || async move { HttpResponse::build(status).body("Response") }))
+                    .route(
+                        "",
+                        web::to(move || async move { HttpResponse::build(status).body("Response") }),
+                    )
                     .wrap(from_fn(errors_as_unauthorized)),
             ),
         )
