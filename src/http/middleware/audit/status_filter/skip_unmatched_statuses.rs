@@ -2,6 +2,9 @@ use super::StatusFilter;
 use actix_web::http::StatusCode;
 use std::marker::PhantomData;
 
+#[cfg(test)]
+mod tests;
+
 /// Provides the statuses that may pass without audit finalization.
 pub trait AllowedStatuses {
     const STATUSES: &'static [StatusCode];
@@ -35,6 +38,3 @@ impl<S: AllowedStatuses> StatusFilter for SkipUnmatched<S> {
         !S::STATUSES.contains(&status)
     }
 }
-
-#[cfg(test)]
-mod tests;
