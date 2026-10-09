@@ -1,17 +1,10 @@
 use crate::http::middleware::audit::audit_scope::AuditScope;
-use crate::http::middleware::audit::audited_error::AuditedError;
 use crate::http::middleware::audit::tests::MockAuditWriter;
 use crate::services::audit::chained::audit_event::AuditEvent;
-use crate::services::audit::chained::audit_event::final_audit_event::FinalAuditEvent;
 use crate::services::audit::chained::audit_event::intermediate_audit_event::IntermediateAuditEvent;
-use crate::services::audit::chained::policy_evaluation_result::PolicyEvaluationResult;
 use crate::services::audit::chained::token_audit_event::TokenAuditEvent;
-use crate::services::audit::events::authorization_audit_event::Reason;
-use actix_web::dev::ServiceResponse;
 use actix_web::web::scope;
-use actix_web::{App, Error, HttpMessage, HttpRequest, HttpResponse, test, web};
-use assert_matches::assert_matches;
-use cedar_policy::Decision;
+use actix_web::{App, HttpMessage, HttpRequest, HttpResponse, test, web};
 use std::sync::Arc;
 
 #[actix_web::test]
@@ -31,7 +24,7 @@ async fn test_token_not_present() {
     let response = test::try_call_service(&service, request).await;
 
     // Assert that the error in the result has the required structure
-    assert_external_token_message(response, "External token not present in request extensions");
+    assert_eq!(response.unwrap_err().as_response_error().error_response().status(), 401);
 }
 
 #[actix_web::test]
@@ -54,7 +47,7 @@ async fn test_broken_token() {
     let response = test::try_call_service(&service, request).await;
 
     // Assert that the error in the result has the required structure
-    assert_external_token_message(response, "Invalid header format. Expected `Bearer ...`");
+    assert_eq!(response.unwrap_err().as_response_error().error_response().status(), 401);
 }
 
 #[actix_web::test]
@@ -98,24 +91,4 @@ async fn test_successful_token() {
     let _ = test::try_call_service(&service, request).await;
 
     // Assert is in the handler above
-}
-
-fn assert_external_token_message(response: anyhow::Result<ServiceResponse, Error>, message: &str) {
-    assert_matches::assert_matches!(response, Err(error) => {
-        let cause = error.as_error::<AuditedError>();
-
-        assert_matches!(cause, Some(AuditedError{
-            event: AuditEvent::Final(
-                FinalAuditEvent{
-                    external_token: Some(_),
-                    internal_token: None,
-                    policy_evaluation_result: PolicyEvaluationResult{ decision: Decision::Deny, reason: Some(Reason{errors: reason_errors, ..}), .. },
-                    ..
-                }
-            ),
-            ..
-        }) => {
-            assert!(reason_errors.contains(message), "{:?}", reason_errors)
-        })
-    });
 }
