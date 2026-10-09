@@ -62,8 +62,8 @@ impl AuditScope for Scope {
             .wrap(from_fn(enrich_from_origin::<AuditedResponse<_>, AuditedError, _>))
             .wrap(from_fn(finalize_on_fail))
             .wrap(from_fn(begin_audit_chain::<ExternalRequest>))
-            .wrap(from_fn(errors_as_unauthorized))
             .wrap(AuditRecorderFactory::<AuditedResponse<_>>::new(writer))
+            .wrap(from_fn(errors_as_unauthorized))
     }
 
     fn continue_audit_scope<D>(self, writer: Arc<dyn AuditWriter>, decryptor: Arc<D>) -> impl HttpServiceFactory

@@ -31,7 +31,7 @@ async fn test_token_not_present() {
     let response = test::try_call_service(&service, request).await;
 
     // Assert that the error in the result has the required structure
-    assert_external_token_message(response, "External token not present in request extensions");
+    assert_eq!(response.unwrap_err().as_response_error().error_response().status(), 401);
 }
 
 #[actix_web::test]
