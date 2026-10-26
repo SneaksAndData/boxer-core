@@ -4,6 +4,7 @@ pub mod base;
 pub mod encrypted_token_service;
 pub mod external_identity_validator;
 pub mod external_identity_validator_factory;
+pub mod legacy;
 pub mod observability;
 pub mod service_provider;
 pub mod token_decryption_service;
