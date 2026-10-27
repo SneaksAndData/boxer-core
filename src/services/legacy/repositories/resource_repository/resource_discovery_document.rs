@@ -34,7 +34,7 @@ pub struct ResourceDiscoveryDocumentSpec {
 }
 
 impl EntityCollectionResource<PathSegment> for ResourceDiscoveryDocument {
-    fn stream(self) -> impl Stream<Item=Result<(Vec<PathSegment>, EntityUid, bool), anyhow::Error>> + Send + Sync {
+    fn stream(self) -> impl Stream<Item = Result<(Vec<PathSegment>, EntityUid, bool), anyhow::Error>> + Send + Sync {
         let active = self.spec.active;
         stream::iter(self.spec.routes)
             .zip(stream::repeat(active))
