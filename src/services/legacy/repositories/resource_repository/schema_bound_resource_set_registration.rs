@@ -5,7 +5,7 @@ use crate::services::backends::kubernetes::kubernetes_resource_manager::status::
 use crate::services::legacy::repositories::resource_repository::resource_discovery_document::{
     ResourceDiscoveryDocument, ResourceDiscoveryDocumentSpec,
 };
-use crate::services::legacy::repositories::resource_repository::resource_route_registration::{
+use crate::services::legacy::repositories::resource_repository::resource_set_registration::{
     ResourceRouteRegistration, ResourceSetRegistration,
 };
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;

@@ -1,8 +1,8 @@
 pub mod action_discovery_document;
 pub mod read_write;
 
-mod action_route_registration;
-mod schema_bound_action_route_registration;
+pub mod action_route_registration;
+pub mod schema_bound_action_route_registration;
 #[cfg(test)]
 mod tests;
 

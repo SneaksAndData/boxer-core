@@ -1,7 +1,7 @@
 use crate::services::backends::kubernetes::kubernetes_repository::soft_delete_resource::SoftDeleteResource;
 use crate::services::backends::kubernetes::kubernetes_resource_manager::UpdateLabels;
 use crate::services::legacy::repositories::lookup_trie::{EntityCollectionResource, SchemaBoundResource};
-use crate::services::legacy::repositories::resource_repository::resource_route_registration::ResourceRouteRegistration;
+use crate::services::legacy::repositories::resource_repository::resource_set_registration::ResourceRouteRegistration;
 use crate::services::legacy::repositories::resource_repository::schema_bound_resource_set_registration::SchemaBoundResourceSetRegistration;
 use crate::services::validation_service::path_segment::PathSegment;
 use crate::services::validation_service::path_segment::PathSegment::{Parameter, Static};
@@ -34,7 +34,7 @@ pub struct ResourceDiscoveryDocumentSpec {
 }
 
 impl EntityCollectionResource<PathSegment> for ResourceDiscoveryDocument {
-    fn stream(self) -> impl Stream<Item = Result<(Vec<PathSegment>, EntityUid, bool), anyhow::Error>> + Send + Sync {
+    fn stream(self) -> impl Stream<Item=Result<(Vec<PathSegment>, EntityUid, bool), anyhow::Error>> + Send + Sync {
         let active = self.spec.active;
         stream::iter(self.spec.routes)
             .zip(stream::repeat(active))

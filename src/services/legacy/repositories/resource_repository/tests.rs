@@ -5,7 +5,7 @@ use crate::services::backends::kubernetes::kubernetes_resource_watcher::Kubernet
 use crate::services::legacy::repositories::lookup_trie::backend::ReadOnlyRepositoryBackend;
 use crate::services::legacy::repositories::resource_repository::read_write::ResourceDiscoveryDocumentRepository;
 use crate::services::legacy::repositories::resource_repository::resource_discovery_document::ResourceDiscoveryDocument;
-use crate::services::legacy::repositories::resource_repository::resource_route_registration::{
+use crate::services::legacy::repositories::resource_repository::resource_set_registration::{
     ResourceRouteRegistration, ResourceSetRegistration,
 };
 use crate::services::service_provider::ServiceProvider;

@@ -2,8 +2,8 @@ pub mod resource_discovery_document;
 
 pub mod read_write;
 
-mod resource_route_registration;
-mod schema_bound_resource_set_registration;
+pub mod resource_set_registration;
+pub mod schema_bound_resource_set_registration;
 #[cfg(test)]
 mod tests;
 
